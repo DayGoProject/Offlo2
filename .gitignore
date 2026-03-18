@@ -31,6 +31,7 @@ Thumbs.db
 *.docx
 *.xlsx
 *.md
+!README.md
 
 # Images / videos (설명용 로컬 파일)
 explain.png
