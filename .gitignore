@@ -1,0 +1,45 @@
+# Environment variables (NEVER commit these)
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+functions/.env
+functions/.env.local
+functions/.secret.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Node
+node_modules/
+
+# Cloud Functions build output
+functions/lib/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documents
+*.pptx
+*.ppt
+*.docx
+*.xlsx
+*.md
+
+# Images / videos (설명용 로컬 파일)
+explain.png
+
+# Claude Code local config
+.claude/
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo

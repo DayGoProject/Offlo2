@@ -1,0 +1,371 @@
+.main {
+  min-height: 100vh;
+  background: #0A0A0F;
+  padding-top: 80px;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+/* Center (loading / error) */
+.center {
+  max-width: 480px;
+  margin: 120px auto 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(61, 219, 135, 0.2);
+  border-top-color: #3DDB87;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loadingText {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.95rem;
+}
+
+.errorText {
+  color: #ff6b6b;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.retryButton {
+  background: #3DDB87;
+  color: #0A0A0F;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 12px 28px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* Summary */
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 20px;
+  padding: 28px 32px;
+}
+
+/* Score circle */
+.scoreCircle {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  flex-shrink: 0;
+}
+
+.scoreSvg {
+  width: 110px;
+  height: 110px;
+  transform: rotate(-90deg);
+}
+
+.scoreBg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 7;
+}
+
+.scoreFill {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s ease;
+}
+
+.scoreInner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.scoreNumber {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.scoreLabel {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+}
+
+/* Summary info */
+.summaryInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.03em;
+}
+
+.totalTime {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.totalLabel {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.totalValue {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.topCats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.catChip {
+  background: rgba(61, 219, 135, 0.08);
+  border: 1px solid rgba(61, 219, 135, 0.2);
+  color: #3DDB87;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Section */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sectionTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+/* App list */
+.appList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.appRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.appHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.appName {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.appTime {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #3DDB87;
+}
+
+.barTrack {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: linear-gradient(90deg, #3DDB87, rgba(61, 219, 135, 0.5));
+  border-radius: 999px;
+  transition: width 0.5s ease;
+}
+
+.appCategory {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Recommendations */
+.recommendations {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 16px 20px;
+}
+
+.recNum {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  background: rgba(61, 219, 135, 0.12);
+  color: #3DDB87;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recText {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* Premium banner */
+.premiumBanner {
+  background: rgba(61, 219, 135, 0.05);
+  border: 1px solid rgba(61, 219, 135, 0.18);
+  border-radius: 16px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.premiumText {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.premiumText strong {
+  color: #3DDB87;
+}
+
+.premiumButton {
+  background: #3DDB87;
+  color: #0A0A0F;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s;
+}
+
+.premiumButton:hover {
+  opacity: 0.88;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.analyzeAgainButton {
+  background: #3DDB87;
+  color: #0A0A0F;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 13px 28px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  transition: opacity 0.2s;
+}
+
+.analyzeAgainButton:hover {
+  opacity: 0.88;
+}
+
+.dashboardButton {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 13px 24px;
+  font-size: 0.9rem;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.dashboardButton:hover {
+  color: rgba(255, 255, 255, 0.9);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Responsive */
+@media (max-width: 560px) {
+  .summary {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 24px 20px;
+  }
+
+  .topCats {
+    justify-content: center;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .analyzeAgainButton,
+  .dashboardButton {
+    text-align: center;
+  }
+}
