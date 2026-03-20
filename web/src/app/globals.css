@@ -1,24 +1,41 @@
+@import "tailwindcss";
+
+/* .dark 클래스 기반 다크모드 활성화 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-brand: #3DDB87;
+  --font-sans: "Spoqa Han Sans Neo", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+
+  --animate-marquee: marquee 20s linear infinite;
+  @keyframes marquee {
+    0%   { transform: translateX(0%); }
+    100% { transform: translateX(-50%); }
+  }
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html {
   scroll-behavior: smooth;
-  font-family: "Spoqa Han Sans Neo", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 }
 
+/* 라이트 모드 기본값 */
 body {
-  background-color: #0A0A0F;
-  color: #fff;
+  background-color: #F4F6F4;
+  color: #0A0A0F;
   font-family: "Spoqa Han Sans Neo", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-button, input, textarea, select {
-  font-family: inherit;
+/* 다크 모드 */
+.dark body {
+  background-color: #0A0A0F;
+  color: #ffffff;
 }
 
 a {
@@ -26,37 +43,9 @@ a {
   text-decoration: none;
 }
 
-/* ── 그라디언트 텍스트 ── */
 .text-gradient {
   background: linear-gradient(135deg, #3DDB87 0%, #a8f0cd 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
-
-/* ── 애니메이션 ── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(28px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.animate-fade-up {
-  opacity: 0;
-  animation: fadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-fade-in {
-  opacity: 0;
-  animation: fadeIn 0.75s ease forwards;
-}
-
-.delay-1 { animation-delay: 0.10s; }
-.delay-2 { animation-delay: 0.22s; }
-.delay-3 { animation-delay: 0.34s; }
-.delay-4 { animation-delay: 0.46s; }
-.delay-5 { animation-delay: 0.58s; }
