@@ -14,6 +14,20 @@
   }
 }
 
+/* ── 테마 CSS 변수 (추후 새 페이지에서도 활용) ──────────────────
+   사용법:
+     라이트/다크 공통 색상  → Tailwind dark: prefix 사용
+     SVG stroke/fill 등     → var(--tw-*) 사용
+   ──────────────────────────────────────────────────────────── */
+:root {
+  --score-track: rgba(0, 0, 0, 0.08);     /* 스코어 원형 트랙 배경 */
+  --border-subtle: rgba(0, 0, 0, 0.08);   /* 미세 보더 */
+}
+.dark {
+  --score-track: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -38,14 +52,34 @@ body {
   color: #ffffff;
 }
 
+/* 폼 요소 폰트 상속 */
+button, input, textarea, select {
+  font-family: inherit;
+}
+
 a {
   color: inherit;
   text-decoration: none;
 }
 
+/* ── 공통 유틸리티 ── */
 .text-gradient {
   background: linear-gradient(135deg, #3DDB87 0%, #a8f0cd 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ── 추후 새 페이지 작성 시 참고할 색상 패턴 ──────────────────
+   페이지 배경:      body가 자동 처리 (라이트:#F4F6F4 / 다크:#0A0A0F)
+   카드/서피스:      bg-white/80 dark:bg-white/[0.03]
+   카드 보더:        border-black/[0.08] dark:border-white/[0.08]
+   주요 텍스트:      text-[#0A0A0F] dark:text-white
+   보조 텍스트:      text-black/50 dark:text-white/50
+   비활성 텍스트:    text-black/30 dark:text-white/30
+   입력 배경:        bg-black/[0.04] dark:bg-white/[0.06]
+   입력 보더:        border-black/[0.1] dark:border-white/[0.1]
+   구분선:           bg-black/[0.1] dark:bg-white/[0.1]
+   에러:             text-red-500 bg-red-500/10 border-red-500/20
+   브랜드 색:        text-brand / bg-brand (라이트/다크 동일)
+   ──────────────────────────────────────────────────────────── */
