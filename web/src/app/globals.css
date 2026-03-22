@@ -4,6 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+  --color-base: #0A0A0F;
   --color-brand: #3DDB87;
   --font-sans: "Spoqa Han Sans Neo", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 

@@ -424,7 +424,12 @@ export const chatWithAnalysis = onCall(
     if (!lastMessage || lastMessage.role !== "user")
       throw new HttpsError("invalid-argument", "마지막 메시지는 user 역할이어야 합니다.");
 
-    const geminiHistory = history.map((msg) => ({
+    // Gemini history는 반드시 user role부터 시작해야 함
+    // 초기 AI 인사 메시지(model role)를 제거하고 첫 user 메시지부터 포함
+    const firstUserIdx = history.findIndex((m) => m.role === "user");
+    const cleanHistory = firstUserIdx >= 0 ? history.slice(firstUserIdx) : [];
+
+    const geminiHistory = cleanHistory.map((msg) => ({
       role: msg.role,
       parts: [{ text: msg.text }],
     }));

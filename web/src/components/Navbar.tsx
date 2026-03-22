@@ -70,7 +70,7 @@ export default function Navbar() {
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
           ? "bg-[#F4F6F4]/95 dark:bg-[#0A0A0F]/95 backdrop-blur-md border-b border-black/[0.06] dark:border-white/[0.06]"
-          : "bg-transparent"
+          : "bg-black/55 backdrop-blur-sm"
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -81,15 +81,20 @@ export default function Navbar() {
 
         {/* Nav Links */}
         <div className="hidden md:flex items-center gap-8">
-          <Link href="/analysis" className="text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white text-sm transition-colors">
-            AI 분석
-          </Link>
-          <Link href="#companion" className="text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white text-sm transition-colors">
-            반려 키우기
-          </Link>
-          <Link href="#features" className="text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white text-sm transition-colors">
-            기능
-          </Link>
+          {[
+            { href: "/analysis", label: "AI 분석" },
+            { href: "#companion", label: "반려 키우기" },
+            { href: "#features", label: "기능" },
+          ].map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`text-sm transition-colors ${scrolled ? "text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white" : "hover:opacity-100"}`}
+              style={scrolled ? undefined : { color: "rgba(255,255,255,0.8)" }}
+            >
+              {label}
+            </Link>
+          ))}
         </div>
 
         {/* Auth + Theme Toggle */}
@@ -111,7 +116,12 @@ export default function Navbar() {
                     <span className="text-brand text-sm font-bold">{getInitial()}</span>
                   )}
                 </div>
-                <span className="text-black/70 dark:text-white/80 text-sm hidden sm:block">{getDisplayName()}</span>
+                <span
+                  className="text-sm hidden sm:block"
+                  style={scrolled ? undefined : { color: "rgba(255,255,255,0.85)" }}
+                >
+                  {getDisplayName()}
+                </span>
               </button>
 
               {dropdownOpen && (
@@ -131,7 +141,11 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Link href="/login" className="text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white text-sm transition-colors">
+              <Link
+                href="/login"
+                className="text-sm transition-colors"
+                style={scrolled ? undefined : { color: "rgba(255,255,255,0.8)" }}
+              >
                 로그인
               </Link>
               <Link
@@ -147,7 +161,8 @@ export default function Navbar() {
           <button
             onClick={toggle}
             aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
-            className="w-9 h-9 flex items-center justify-center rounded-full border border-black/[0.1] dark:border-white/[0.1] text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:border-black/[0.2] dark:hover:border-white/[0.2] transition-all bg-black/[0.03] dark:bg-white/[0.04]"
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${scrolled ? "border border-black/[0.1] dark:border-white/[0.1] text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:border-black/[0.2] dark:hover:border-white/[0.2] bg-black/[0.03] dark:bg-white/[0.04]" : "border hover:opacity-100"}`}
+            style={scrolled ? undefined : { borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)" }}
           >
             {theme === "dark" ? <SunIcon /> : <MoonIcon />}
           </button>

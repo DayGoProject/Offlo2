@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/hooks/useAuth";
 
 /* ── 애니메이션 ── */
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -51,16 +52,38 @@ function IconCheck() {
 }
 
 /* ── Hero ── */
-function Hero() {
+function Hero({ ctaHref }: { ctaHref: string }) {
   return (
     <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-6 pt-24 pb-20">
+      {/* 배경 비디오 */}
+      <video
+        aria-hidden
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ zIndex: 0 }}
+      >
+        <source src="/hero.mp4" type="video/mp4" />
+      </video>
+
+      {/* 비디오 다크 오버레이 */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "rgba(10,10,15,0.72)", zIndex: 1 }}
+      />
+
+
       {/* 배경 글로우 */}
       <div
         aria-hidden
         className="absolute inset-0 pointer-events-none"
         style={{
           background:
-            "radial-gradient(ellipse 80% 60% at 50% 20%, rgba(61,219,135,0.07) 0%, transparent 70%)",
+            "radial-gradient(ellipse 80% 60% at 50% 20%, rgba(61,219,135,0.10) 0%, transparent 70%)",
+          zIndex: 2,
         }}
       />
 
@@ -70,22 +93,23 @@ function Hero() {
         initial="hidden"
         animate="visible"
         custom={0}
-        className="flex items-center gap-2 bg-black/[0.05] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.08] rounded-full px-4 py-1.5 mb-8"
+        className="flex items-center gap-2 bg-white/[0.06] border border-white/[0.12] rounded-full px-4 py-1.5 mb-8"
+        style={{ position: "relative", zIndex: 10 }}
       >
         <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-        <span className="text-black/60 dark:text-white/70 text-xs font-medium tracking-wide">
+        <span className="text-white/70 text-xs font-medium tracking-wide">
           AI 기반 디지털 디톡스 플랫폼
         </span>
       </motion.div>
 
       {/* 메인 헤드라인 */}
-      <div className="text-center max-w-5xl mx-auto">
+      <div className="text-center max-w-5xl mx-auto" style={{ position: "relative", zIndex: 10 }}>
         <motion.h1
           variants={fadeUp}
           initial="hidden"
           animate="visible"
           custom={1}
-          className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.05] mb-6 text-[#0A0A0F] dark:text-white"
+          className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.05] mb-6 text-white"
         >
           스마트폰이<br />
           당신의 시간을<br />
@@ -97,7 +121,7 @@ function Hero() {
           initial="hidden"
           animate="visible"
           custom={2}
-          className="text-black/50 dark:text-white/50 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed"
+          className="text-white/55 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed"
         >
           스크린타임 스크린샷 하나로 AI가 사용 습관을 분석해 드립니다.<br className="hidden sm:block" />
           반려 식물과 동물을 키우며 건강한 디지털 습관을 만들어 보세요.
@@ -111,39 +135,20 @@ function Hero() {
           className="flex flex-col sm:flex-row items-center justify-center gap-4"
         >
           <Link
-            href="/signup"
+            href={ctaHref}
             className="flex items-center gap-2 bg-brand text-[#0A0A0F] font-bold px-8 py-4 rounded-full hover:opacity-90 transition-opacity text-base"
           >
-            무료로 시작하기 <IconArrow />
+            {ctaHref === "/analysis" ? "분석 시작하기" : "무료로 시작하기"} <IconArrow />
           </Link>
           <Link
             href="#analysis"
-            className="flex items-center gap-2 border border-black/[0.15] dark:border-white/15 text-black/60 dark:text-white/70 px-8 py-4 rounded-full hover:border-black/[0.3] dark:hover:border-white/30 hover:text-black dark:hover:text-white transition-all text-base"
+            className="flex items-center gap-2 px-8 py-4 rounded-full transition-all text-base"
+            style={{ border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.8)" }}
           >
             작동 방식 보기
           </Link>
         </motion.div>
       </div>
-
-      {/* 통계 */}
-      <motion.div
-        variants={fadeUp}
-        initial="hidden"
-        animate="visible"
-        custom={4}
-        className="mt-20 flex flex-col sm:flex-row items-center gap-10 sm:gap-16"
-      >
-        {[
-          { value: "12,400+", label: "활성 사용자" },
-          { value: "2.3시간", label: "하루 평균 절약" },
-          { value: "47+", label: "획득 가능한 뱃지" },
-        ].map((stat, i) => (
-          <div key={i} className="text-center">
-            <div className="text-3xl sm:text-4xl font-extrabold text-gradient">{stat.value}</div>
-            <div className="text-black/40 dark:text-white/40 text-sm mt-1">{stat.label}</div>
-          </div>
-        ))}
-      </motion.div>
 
       {/* 스크롤 힌트 */}
       <motion.div
@@ -151,9 +156,10 @@ function Hero() {
         animate={{ opacity: 1 }}
         transition={{ delay: 1.2 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
+        style={{ zIndex: 10 }}
       >
-        <span className="text-black/20 dark:text-white/20 text-xs tracking-widest uppercase">scroll</span>
-        <div className="w-px h-10 bg-gradient-to-b from-black/20 dark:from-white/20 to-transparent" />
+        <span className="text-white/30 text-xs tracking-widest uppercase">scroll</span>
+        <div className="w-px h-10 bg-gradient-to-b from-white/25 to-transparent" />
       </motion.div>
     </section>
   );
@@ -182,14 +188,8 @@ function MarqueeStrip() {
 }
 
 /* ── AI 분석 섹션 ── */
-function AnalysisSection() {
+function AnalysisSection({ ctaHref }: { ctaHref: string }) {
   const { ref, inView } = useScrollRef();
-  const bars = [
-    { app: "인스타그램", time: "3시간 42분", pct: 88 },
-    { app: "유튜브", time: "2시간 15분", pct: 54 },
-    { app: "카카오톡", time: "1시간 08분", pct: 27 },
-    { app: "틱톡", time: "58분", pct: 23 },
-  ];
 
   return (
     <section id="analysis" ref={ref} className="py-28 px-6 max-w-7xl mx-auto">
@@ -220,14 +220,14 @@ function AnalysisSection() {
             ))}
           </ul>
           <Link
-            href="/signup"
+            href={ctaHref}
             className="inline-flex items-center gap-2 border border-brand/40 text-brand px-6 py-3 rounded-full hover:bg-brand/10 transition-all text-sm font-semibold"
           >
             지금 분석해보기 <IconArrow />
           </Link>
         </motion.div>
 
-        {/* 목업 카드 */}
+        {/* AI 채팅 카드 */}
         <motion.div
           variants={fadeRight}
           initial="hidden"
@@ -239,38 +239,62 @@ function AnalysisSection() {
             className="absolute -inset-10 rounded-full pointer-events-none"
             style={{ background: "radial-gradient(ellipse at center, rgba(61,219,135,0.07) 0%, transparent 70%)" }}
           />
-          <div className="relative bg-white/70 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-6 backdrop-blur-sm shadow-sm dark:shadow-none">
-            <div className="flex items-center justify-between mb-5">
-              <span className="text-[#0A0A0F] dark:text-white font-semibold text-sm">이번 주 스크린타임</span>
-              <span className="text-brand text-xs font-bold bg-brand/10 border border-brand/20 px-2.5 py-1 rounded-full">
-                AI 분석 완료
+          <div className="relative bg-white/70 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl overflow-hidden backdrop-blur-sm shadow-sm dark:shadow-none">
+            {/* 채팅 헤더 */}
+            <div className="flex items-center gap-2.5 px-5 py-3.5 border-b border-black/[0.07] dark:border-white/[0.07]">
+              <div className="w-7 h-7 rounded-full bg-brand/20 border border-brand/40 flex items-center justify-center text-xs font-bold text-brand">
+                AI
+              </div>
+              <span className="text-[#0A0A0F] dark:text-white text-sm font-semibold">Offlo AI 코치</span>
+              <span className="ml-auto text-[10px] text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-full font-semibold">
+                분석 완료
               </span>
             </div>
-            <div className="space-y-4">
-              {bars.map((row) => (
-                <div key={row.app}>
-                  <div className="flex justify-between mb-1.5">
-                    <span className="text-black/70 dark:text-white/80 text-sm">{row.app}</span>
-                    <span className="text-black/40 dark:text-white/40 text-sm">{row.time}</span>
-                  </div>
-                  <div className="h-1.5 bg-black/[0.07] dark:bg-white/[0.06] rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-brand to-brand/60"
-                      initial={{ width: 0 }}
-                      animate={inView ? { width: `${row.pct}%` } : { width: 0 }}
-                      transition={{ duration: 1, delay: 0.3 + bars.indexOf(row) * 0.1, ease: "easeOut" }}
-                    />
-                  </div>
+
+            {/* 채팅 메시지 */}
+            <div className="px-5 py-5 space-y-3.5">
+              {/* AI 첫 메시지 */}
+              <div className="flex gap-2.5">
+                <div className="w-6 h-6 rounded-full bg-brand/20 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-brand mt-0.5">AI</div>
+                <div className="bg-black/[0.05] dark:bg-white/[0.07] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed text-black/80 dark:text-white/85 max-w-[85%]">
+                  이번 주 인스타그램 사용이{" "}
+                  <span className="text-brand font-semibold">3시간 42분</span>으로
+                  가장 많아요. 특히 취침 전에 집중됐어요.
                 </div>
-              ))}
-            </div>
-            <div className="mt-5 bg-brand/[0.06] border border-brand/[0.15] rounded-xl p-4">
-              <p className="text-brand/80 text-xs font-semibold mb-1">AI 분석 결과</p>
-              <p className="text-black/60 dark:text-white/60 text-sm leading-relaxed">
-                인스타그램 사용 시간이 평균 대비{" "}
-                <strong className="text-brand">47% 높습니다.</strong>{" "}
-                취침 전 1시간 사용을 줄이면 수면 질 개선 효과가 기대됩니다.
-              </p>
+              </div>
+
+              {/* 유저 메시지 */}
+              <div className="flex justify-end">
+                <div className="bg-brand/15 border border-brand/20 rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm text-black/80 dark:text-white/85 max-w-[80%]">
+                  어떻게 줄일 수 있을까요?
+                </div>
+              </div>
+
+              {/* AI 답변 */}
+              <div className="flex gap-2.5">
+                <div className="w-6 h-6 rounded-full bg-brand/20 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-brand mt-0.5">AI</div>
+                <div className="bg-black/[0.05] dark:bg-white/[0.07] rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed text-black/80 dark:text-white/85 max-w-[85%]">
+                  밤 11시 이후{" "}
+                  <span className="text-brand font-semibold">앱 사용 금지</span>를
+                  설정하고, 반려식물 미션을 함께 실천해 보세요 🌱
+                </div>
+              </div>
+
+              {/* 유저 메시지 2 */}
+              <div className="flex justify-end">
+                <div className="bg-brand/15 border border-brand/20 rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm text-black/80 dark:text-white/85 max-w-[80%]">
+                  알겠어요, 실천해볼게요!
+                </div>
+              </div>
+
+              {/* AI 마무리 */}
+              <div className="flex gap-2.5">
+                <div className="w-6 h-6 rounded-full bg-brand/20 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-brand mt-0.5">AI</div>
+                <div className="bg-brand/[0.08] border border-brand/20 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed text-black/80 dark:text-white/85 max-w-[85%]">
+                  좋아요! 오늘부터 디톡스 점수가 쌓이기 시작해요 ✨
+                  <span className="block text-brand font-semibold mt-1 text-xs">7일 연속 달성 시 뱃지 획득!</span>
+                </div>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -280,7 +304,7 @@ function AnalysisSection() {
 }
 
 /* ── 반려 섹션 ── */
-function CompanionSection() {
+function CompanionSection({ ctaHref }: { ctaHref: string }) {
   const { ref, inView } = useScrollRef();
   const plantStages = [
     { emoji: "🌱", label: "새싹", days: "1일차", active: false },
@@ -376,7 +400,7 @@ function CompanionSection() {
               ))}
             </ul>
             <Link
-              href="/signup"
+              href={ctaHref}
               className="inline-flex items-center gap-2 border border-brand/40 text-brand px-6 py-3 rounded-full hover:bg-brand/10 transition-all text-sm font-semibold"
             >
               반려 키우기 시작 <IconArrow />
@@ -437,7 +461,7 @@ function SubFeatures() {
 }
 
 /* ── CTA 배너 ── */
-function CTABanner() {
+function CTABanner({ ctaHref }: { ctaHref: string }) {
   const { ref, inView } = useScrollRef();
 
   return (
@@ -459,13 +483,13 @@ function CTABanner() {
             <span className="text-gradient">시작하세요</span>
           </h2>
           <p className="text-black/40 dark:text-white/40 text-lg mb-10">
-            12,400명이 이미 디지털 디톡스를 시작했습니다.
+            스크린샷 하나로 AI가 당신의 디지털 습관을 분석해 드립니다.
           </p>
           <Link
-            href="/signup"
+            href={ctaHref}
             className="inline-flex items-center gap-2 bg-brand text-[#0A0A0F] font-bold px-10 py-4 rounded-full hover:opacity-90 transition-opacity text-base"
           >
-            무료 계정 만들기 <IconArrow />
+            {ctaHref === "/analysis" ? "분석 시작하기" : "무료 계정 만들기"} <IconArrow />
           </Link>
         </div>
       </motion.div>
@@ -479,7 +503,7 @@ function Footer() {
     <footer className="border-t border-black/[0.06] dark:border-white/[0.06] py-10 px-6">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         <span className="text-gradient text-sm font-extrabold">Offlo</span>
-        <span className="text-black/25 dark:text-white/25 text-sm">© 2025 Offlo. All rights reserved.</span>
+        <span className="text-black/25 dark:text-white/25 text-sm">© 2026 Offlo. All rights reserved.</span>
         <div className="flex items-center gap-6">
           <Link href="#" className="text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 text-sm transition-colors">개인정보처리방침</Link>
           <Link href="#" className="text-black/30 dark:text-white/30 hover:text-black/60 dark:hover:text-white/60 text-sm transition-colors">이용약관</Link>
@@ -492,16 +516,19 @@ function Footer() {
 
 /* ── Page ── */
 export default function LandingPage() {
+  const { user } = useAuth();
+  const ctaHref = user ? "/analysis" : "/signup";
+
   return (
     <>
       <Navbar />
       <main>
-        <Hero />
+        <Hero ctaHref={ctaHref} />
         <MarqueeStrip />
-        <AnalysisSection />
-        <CompanionSection />
+        <AnalysisSection ctaHref={ctaHref} />
+        <CompanionSection ctaHref={ctaHref} />
         <SubFeatures />
-        <CTABanner />
+        <CTABanner ctaHref={ctaHref} />
       </main>
       <Footer />
     </>
