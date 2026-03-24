@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { updateProfile } from "firebase/auth";
 import { signInWithGoogle, signUpWithEmail, getAuthErrorMessage, getFirebaseErrorCode } from "@/services/auth";
 import GoogleIcon from "@/components/icons/GoogleIcon";
-import s from "@/styles/auth.module.css";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -36,12 +35,10 @@ export default function SignupPage() {
   async function handleEmailSignup(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-
     if (password !== confirmPassword) {
       setError("비밀번호가 일치하지 않습니다");
       return;
     }
-
     setEmailLoading(true);
     try {
       const credential = await signUpWithEmail(email, password);
@@ -56,59 +53,92 @@ export default function SignupPage() {
     }
   }
 
+  const inputClass =
+    "bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.1] dark:border-white/[0.1] rounded-xl px-4 py-3 text-sm text-[#0A0A0F] dark:text-white outline-none focus:border-brand transition-colors w-full placeholder:text-black/35 dark:placeholder:text-white/35";
+
   return (
-    <div className={s.container}>
-      <div className={s.card}>
-        <Link href="/" className={s.backLink}>
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="w-full max-w-md border border-black/[0.1] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.03] rounded-2xl p-10 shadow-sm dark:shadow-none">
+
+        {/* 뒤로 */}
+        <Link href="/" className="flex items-center justify-center gap-1.5 text-[0.8125rem] text-black/45 dark:text-white/45 mb-6 hover:text-black dark:hover:text-white transition-colors">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M11 7H3M6 3L2 7l4 4" />
           </svg>
           메인으로
         </Link>
 
-        <Link href="/" className={`${s.logo} text-gradient`}>Offlo</Link>
-        <h1 className={s.title}>회원가입</h1>
-        <p className={s.subtitle}>무료로 시작해보세요</p>
+        {/* 로고 */}
+        <Link href="/" className="text-gradient block text-center text-2xl font-extrabold tracking-tight mb-6">
+          Offlo
+        </Link>
 
-        <button className={s.googleButton} onClick={handleGoogleSignup} disabled={googleLoading} type="button">
+        <h1 className="text-center text-2xl font-extrabold tracking-tight mb-1.5 text-[#0A0A0F] dark:text-white">
+          회원가입
+        </h1>
+        <p className="text-center text-sm text-black/50 dark:text-white/50 mb-7">무료로 시작해보세요</p>
+
+        {/* Google */}
+        <button
+          className="w-full flex items-center justify-center gap-3 bg-white text-[#111] text-sm font-semibold py-3 px-6 rounded-full border border-black/[0.1] cursor-pointer hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+          onClick={handleGoogleSignup}
+          disabled={googleLoading}
+          type="button"
+        >
           <GoogleIcon />
           {googleLoading ? "처리 중..." : "Google로 계속하기"}
         </button>
 
-        <div className={s.divider}><span>또는</span></div>
+        {/* 구분선 */}
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-black/[0.1] dark:bg-white/[0.1]" />
+          <span className="text-xs text-black/40 dark:text-white/40 whitespace-nowrap">또는</span>
+          <div className="flex-1 h-px bg-black/[0.1] dark:bg-white/[0.1]" />
+        </div>
 
-        <form className={s.form} onSubmit={handleEmailSignup}>
-          <div className={s.field}>
-            <label className={s.label} htmlFor="displayName">이름</label>
-            <input id="displayName" className={s.input} type="text" placeholder="홍길동"
+        {/* 이메일 폼 */}
+        <form className="flex flex-col gap-4" onSubmit={handleEmailSignup}>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[0.8125rem] font-medium text-black/70 dark:text-white/70" htmlFor="displayName">이름</label>
+            <input id="displayName" className={inputClass} type="text" placeholder="홍길동"
               value={displayName} onChange={(e) => setDisplayName(e.target.value)} required autoComplete="name" />
           </div>
-          <div className={s.field}>
-            <label className={s.label} htmlFor="email">이메일</label>
-            <input id="email" className={s.input} type="email" placeholder="name@example.com"
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[0.8125rem] font-medium text-black/70 dark:text-white/70" htmlFor="email">이메일</label>
+            <input id="email" className={inputClass} type="email" placeholder="name@example.com"
               value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
           </div>
-          <div className={s.field}>
-            <label className={s.label} htmlFor="password">비밀번호</label>
-            <input id="password" className={s.input} type="password" placeholder="6자 이상 입력해주세요"
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[0.8125rem] font-medium text-black/70 dark:text-white/70" htmlFor="password">비밀번호</label>
+            <input id="password" className={inputClass} type="password" placeholder="6자 이상 입력해주세요"
               value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="new-password" />
           </div>
-          <div className={s.field}>
-            <label className={s.label} htmlFor="confirmPassword">비밀번호 확인</label>
-            <input id="confirmPassword" className={s.input} type="password" placeholder="비밀번호를 다시 입력해주세요"
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[0.8125rem] font-medium text-black/70 dark:text-white/70" htmlFor="confirmPassword">비밀번호 확인</label>
+            <input id="confirmPassword" className={inputClass} type="password" placeholder="비밀번호를 다시 입력해주세요"
               value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required autoComplete="new-password" />
           </div>
 
-          {error && <p className={s.error}>{error}</p>}
+          {error && (
+            <p className="text-[0.8125rem] text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg px-3.5 py-2.5">
+              {error}
+            </p>
+          )}
 
-          <button className={s.submitButton} type="submit" disabled={emailLoading}>
+          <button
+            className="w-full bg-brand text-[#0A0A0F] text-sm font-bold py-3.5 rounded-full border-none cursor-pointer hover:opacity-90 transition-opacity mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            type="submit"
+            disabled={emailLoading}
+          >
             {emailLoading ? "가입 중..." : "회원가입"}
           </button>
         </form>
 
-        <p className={s.footer}>
+        <p className="text-center text-sm text-black/50 dark:text-white/50 mt-6">
           이미 계정이 있으신가요?{" "}
-          <Link href="/login" className={s.footerLink}>로그인</Link>
+          <Link href="/login" className="text-brand font-semibold hover:underline">
+            로그인
+          </Link>
         </p>
       </div>
     </div>
