@@ -53,137 +53,275 @@ function IconCheck() {
 
 /* ── Hero ── */
 function Hero({ ctaHref }: { ctaHref: string }) {
-  return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-6 pt-24 pb-20">
-      {/* 배경 비디오 */}
-      <video
-        aria-hidden
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{ zIndex: 0 }}
-      >
-        <source src="/hero.mp4" type="video/mp4" />
-      </video>
+  const previewApps = [
+    { name: "인스타그램", time: "1h 42m", pct: 72 },
+    { name: "유튜브", time: "1h 18m", pct: 55 },
+    { name: "카카오톡", time: "48m", pct: 34 },
+  ];
 
-      {/* 비디오 다크 오버레이 */}
+  return (
+    <section className="relative overflow-hidden flex flex-col" style={{ minHeight: "100svh", background: "#0A0A0F" }}>
+      {/* 배경 글로우 */}
       <div
         aria-hidden
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: "rgba(10,10,15,0.72)", zIndex: 1 }}
+        className="absolute pointer-events-none"
+        style={{
+          top: 0, right: 0, width: "60%", height: "100%",
+          background: "radial-gradient(ellipse 70% 70% at 70% 40%, rgba(61,219,135,0.11) 0%, transparent 65%)",
+        }}
       />
-
-
-      {/* 배경 글로우 */}
+      {/* 그리드 텍스처 */}
       <div
         aria-hidden
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            "radial-gradient(ellipse 80% 60% at 50% 20%, rgba(61,219,135,0.10) 0%, transparent 70%)",
-          zIndex: 2,
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.015) 1px, transparent 1px)",
+          backgroundSize: "80px 80px",
         }}
       />
 
-      {/* 배지 */}
-      <motion.div
-        variants={fadeUp}
-        initial="hidden"
-        animate="visible"
-        custom={0}
-        className="flex items-center gap-2 bg-white/[0.06] border border-white/[0.12] rounded-full px-4 py-1.5 mb-8"
-        style={{ position: "relative", zIndex: 10 }}
+      {/* 메인 콘텐츠 */}
+      <div
+        className="relative flex-1 flex items-center gap-0 z-10 max-w-[1440px] mx-auto w-full"
+        style={{ padding: "96px 80px 48px" }}
       >
-        <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-        <span className="text-white/70 text-xs font-medium tracking-wide">
-          AI 기반 디지털 디톡스 플랫폼
-        </span>
-      </motion.div>
+        {/* 왼쪽: 텍스트 블록 */}
+        <div className="flex flex-col flex-shrink-0" style={{ width: "min(600px, 50%)" }}>
+          {/* 배지 */}
+          <motion.div
+            variants={fadeUp} initial="hidden" animate="visible" custom={0}
+            className="flex items-center gap-2 w-fit rounded-full px-4 py-1.5 mb-8"
+            style={{ background: "rgba(61,219,135,0.07)", border: "1px solid rgba(61,219,135,0.18)" }}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-brand" />
+            <span className="text-[11px] font-medium tracking-widest" style={{ color: "rgba(61,219,135,0.85)" }}>
+              AI 기반 디지털 디톡스
+            </span>
+          </motion.div>
 
-      {/* 메인 헤드라인 */}
-      <div className="text-center max-w-5xl mx-auto" style={{ position: "relative", zIndex: 10 }}>
-        <motion.h1
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          custom={1}
-          className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight leading-[1.05] mb-6 text-white"
-        >
-          스마트폰이<br />
-          당신의 시간을<br />
-          <span className="text-gradient">빼앗고 있습니다.</span>
-        </motion.h1>
+          {/* 헤드라인 */}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1} className="mb-9">
+            <div className="font-extrabold text-white" style={{ fontSize: "clamp(44px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>스마트폰이</div>
+            <div className="font-extrabold text-white" style={{ fontSize: "clamp(44px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>당신의 시간을</div>
+            <div className="font-extrabold text-gradient" style={{ fontSize: "clamp(44px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>빼앗고 있습니다.</div>
+          </motion.div>
 
-        <motion.p
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          custom={2}
-          className="text-white/55 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed"
-        >
-          스크린타임 스크린샷 하나로 AI가 사용 습관을 분석해 드립니다.<br className="hidden sm:block" />
-          반려 식물과 동물을 키우며 건강한 디지털 습관을 만들어 보세요.
-        </motion.p>
+          {/* 서브텍스트 */}
+          <motion.p
+            variants={fadeUp} initial="hidden" animate="visible" custom={2}
+            className="text-base leading-[1.8] mb-10"
+            style={{ color: "rgba(255,255,255,0.42)", maxWidth: "480px" }}
+          >
+            스크린타임 스크린샷 하나를 업로드하면 Gemini AI가<br />
+            앱별 사용 패턴을 분석하고 디톡스 플랜을 제안합니다.
+          </motion.p>
 
+          {/* CTA 버튼 */}
+          <motion.div
+            variants={fadeUp} initial="hidden" animate="visible" custom={3}
+            className="flex items-center gap-3 mb-12"
+          >
+            <Link
+              href={ctaHref}
+              className="flex items-center gap-2 bg-brand text-[#0A0A0F] font-bold px-7 py-3.5 rounded-full hover:opacity-90 transition-opacity text-sm"
+            >
+              {ctaHref === "/analysis" ? "분석 시작하기" : "무료로 시작하기"} <IconArrow />
+            </Link>
+            <Link
+              href="#analysis"
+              className="flex items-center gap-2 px-7 py-3.5 rounded-full text-sm transition-all"
+              style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.45)" }}
+            >
+              작동 방식 보기
+            </Link>
+          </motion.div>
+
+          {/* 통계 */}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4} className="flex items-center gap-7">
+            {[
+              { val: "4.2h", label: "일평균 절약 시간" },
+              { val: "98%", label: "AI 분석 정확도" },
+              { val: "무료", label: "기본 플랜" },
+            ].map((stat, i) => (
+              <div key={stat.label} className="flex items-center gap-7">
+                {i > 0 && <div className="w-px h-8" style={{ background: "rgba(255,255,255,0.08)" }} />}
+                <div className="flex flex-col gap-1">
+                  <span className="font-extrabold text-brand" style={{ fontSize: "24px", letterSpacing: "-0.02em" }}>{stat.val}</span>
+                  <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>{stat.label}</span>
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* 오른쪽: 앱 프리뷰 카드 */}
         <motion.div
-          variants={fadeUp}
-          initial="hidden"
-          animate="visible"
-          custom={3}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          className="flex-1 hidden lg:flex items-center justify-center"
+          style={{ height: "780px" }}
+          initial={{ opacity: 0, x: 48 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.9, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
         >
-          <Link
-            href={ctaHref}
-            className="flex items-center gap-2 bg-brand text-[#0A0A0F] font-bold px-8 py-4 rounded-full hover:opacity-90 transition-opacity text-base"
+          <div className="relative" style={{ width: "600px", height: "780px" }}>
+
+          {/* 고스트 카드 */}
+          <div
+            className="absolute rounded-3xl"
+            style={{
+              top: "70px", left: "48px", width: "504px", height: "360px",
+              background: "rgba(61,219,135,0.04)", border: "1px solid rgba(61,219,135,0.12)",
+              transform: "rotate(4deg)",
+            }}
+          />
+
+          {/* 메인 분석 결과 카드 */}
+          <div
+            className="absolute rounded-3xl"
+            style={{
+              top: "40px", left: "20px", width: "560px",
+              background: "#111118", border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(61,219,135,0.06)",
+              padding: "32px",
+            }}
           >
-            {ctaHref === "/analysis" ? "분석 시작하기" : "무료로 시작하기"} <IconArrow />
-          </Link>
-          <Link
-            href="#analysis"
-            className="flex items-center gap-2 px-8 py-4 rounded-full transition-all text-base"
-            style={{ border: "1px solid rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.8)" }}
+            <div className="flex items-center justify-between mb-7">
+              <div className="flex items-center gap-2.5">
+                <div className="w-2 h-2 rounded-full bg-brand" />
+                <span className="text-white font-bold" style={{ fontSize: "15px" }}>오늘의 분석 결과</span>
+              </div>
+              <span
+                className="font-bold text-brand px-3 py-1 rounded-full"
+                style={{ fontSize: "12px", background: "rgba(61,219,135,0.1)", border: "1px solid rgba(61,219,135,0.2)" }}
+              >일간</span>
+            </div>
+            <div className="flex items-center gap-7 mb-7">
+              <div className="relative flex-shrink-0" style={{ width: "96px", height: "96px" }}>
+                <svg width="96" height="96" viewBox="0 0 96 96">
+                  <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7" />
+                  <circle cx="48" cy="48" r="38" fill="none" stroke="#3DDB87" strokeWidth="7"
+                    strokeLinecap="round" strokeDasharray="170 239" transform="rotate(-90 48 48)" />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="font-extrabold text-brand leading-none" style={{ fontSize: "26px" }}>71</span>
+                  <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)" }}>점</span>
+                </div>
+              </div>
+              <div>
+                <div className="mb-1" style={{ fontSize: "13px", color: "rgba(255,255,255,0.3)" }}>총 스크린타임</div>
+                <div className="font-extrabold text-white" style={{ fontSize: "34px", letterSpacing: "-0.03em", lineHeight: 1 }}>5h 38m</div>
+                <div className="flex gap-1.5 mt-2.5">
+                  {["SNS", "엔터테인먼트"].map((tag) => (
+                    <span key={tag} className="text-brand px-2.5 py-0.5 rounded-full"
+                      style={{ fontSize: "12px", background: "rgba(61,219,135,0.08)", border: "1px solid rgba(61,219,135,0.15)" }}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-4">
+              {previewApps.map((app) => (
+                <div key={app.name} className="flex flex-col gap-2">
+                  <div className="flex justify-between">
+                    <span className="font-semibold" style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)" }}>{app.name}</span>
+                    <span className="font-bold text-brand" style={{ fontSize: "14px" }}>{app.time}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                    <div className="h-full rounded-full" style={{ width: `${app.pct}%`, background: "linear-gradient(90deg,#3DDB87,rgba(61,219,135,0.3))" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* AI 채팅 미니 카드 */}
+          <div
+            className="absolute rounded-2xl"
+            style={{
+              top: "468px", left: "20px", width: "560px",
+              background: "#0F1A14", border: "1px solid rgba(61,219,135,0.18)",
+              padding: "20px 24px",
+            }}
           >
-            작동 방식 보기
-          </Link>
+            <div className="flex items-start gap-3 mb-3">
+              <div
+                className="rounded-full flex-shrink-0 flex items-center justify-center font-bold text-brand"
+                style={{ width: "28px", height: "28px", minWidth: "28px", fontSize: "10px", background: "rgba(61,219,135,0.15)" }}
+              >AI</div>
+              <div className="rounded-2xl rounded-tl-sm px-4 py-3 leading-relaxed"
+                style={{ fontSize: "13px", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.8)" }}>
+                취침 전 인스타그램 사용이{" "}
+                <span className="text-brand font-bold">1시간 42분</span>이에요.
+                오늘 밤 11시부터 앱 잠금을 설정해볼까요? 🌿
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <div className="rounded-2xl rounded-tr-sm px-4 py-2"
+                style={{ fontSize: "13px", background: "rgba(61,219,135,0.1)", border: "1px solid rgba(61,219,135,0.18)", color: "rgba(255,255,255,0.75)" }}>
+                좋아요, 설정해볼게요!
+              </div>
+            </div>
+          </div>
+
+          {/* 미니 배지 카드: 반려식물 */}
+          <div
+            className="absolute flex items-center gap-3 rounded-2xl"
+            style={{ top: "668px", left: "20px", width: "264px", background: "#111118", border: "1px solid rgba(255,255,255,0.08)", padding: "16px 18px" }}
+          >
+            <div className="rounded-xl flex-shrink-0 flex items-center justify-center"
+              style={{ width: "44px", height: "44px", background: "rgba(61,219,135,0.08)", border: "1px solid rgba(61,219,135,0.15)" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3DDB87" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22V12" /><path d="M12 12C12 12 8 8 4 9c0 0 2 6 8 6" /><path d="M12 12C12 12 16 8 20 9c0 0-2 6-8 6" />
+              </svg>
+            </div>
+            <div>
+              <div className="font-bold text-white mb-0.5" style={{ fontSize: "13px" }}>반려식물</div>
+              <div className="text-brand" style={{ fontSize: "12px" }}>30일차 · 나무 단계</div>
+            </div>
+          </div>
+
+          {/* 미니 배지 카드: 연속 달성 */}
+          <div
+            className="absolute flex items-center gap-3 rounded-2xl"
+            style={{ top: "668px", left: "300px", width: "280px", background: "#111118", border: "1px solid rgba(255,255,255,0.08)", padding: "16px 18px" }}
+          >
+            <div className="rounded-xl flex-shrink-0 flex items-center justify-center"
+              style={{ width: "44px", height: "44px", background: "rgba(61,219,135,0.08)", border: "1px solid rgba(61,219,135,0.15)" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3DDB87" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </div>
+            <div>
+              <div className="font-bold text-white mb-0.5" style={{ fontSize: "13px" }}>7일 연속 달성</div>
+              <div className="text-brand" style={{ fontSize: "12px" }}>디톡스 뱃지 획득!</div>
+            </div>
+          </div>
+
+          </div>
         </motion.div>
       </div>
 
-      {/* 스크롤 힌트 */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.2 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-        style={{ zIndex: 10 }}
+      {/* 하단 피처 스트립 */}
+      <div
+        className="relative border-t py-3.5 overflow-hidden z-10"
+        style={{ borderColor: "rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}
       >
-        <span className="text-white/30 text-xs tracking-widest uppercase">scroll</span>
-        <div className="w-px h-10 bg-gradient-to-b from-white/25 to-transparent" />
-      </motion.div>
-    </section>
-  );
-}
-
-/* ── 마키 스트립 ── */
-function MarqueeStrip() {
-  const tags = [
-    "AI 스크린타임 분석", "반려식물 키우기", "반려동물 성장",
-    "디지털 디톡스", "뱃지 & 칭호", "목표 설정", "분석 히스토리",
-    "개인정보 보호", "주간 리포트", "중독 패턴 감지",
-  ];
-  const doubled = [...tags, ...tags];
-
-  return (
-    <div className="border-y border-black/[0.06] dark:border-white/[0.06] py-4 overflow-hidden bg-black/[0.02] dark:bg-white/[0.01]">
-      <div className="flex animate-marquee whitespace-nowrap gap-12">
-        {doubled.map((tag, i) => (
-          <span key={i} className="text-black/30 dark:text-white/25 text-sm font-medium flex items-center gap-3">
-            <span className="text-brand/60">✦</span> {tag}
-          </span>
-        ))}
+        <div className="flex animate-marquee whitespace-nowrap gap-12">
+          {[
+            "AI 스크린타임 분석", "반려식물 키우기", "반려동물 성장", "디지털 디톡스",
+            "뱃지 & 칭호", "목표 설정", "분석 히스토리", "개인정보 보호",
+            "주간 리포트", "중독 패턴 감지", "Gemini Vision AI",
+            "AI 스크린타임 분석", "반려식물 키우기", "반려동물 성장", "디지털 디톡스",
+            "뱃지 & 칭호", "목표 설정", "분석 히스토리", "개인정보 보호",
+          ].map((tag, i) => (
+            <span key={i} className="flex items-center gap-3 text-xs" style={{ color: "rgba(255,255,255,0.18)" }}>
+              <span style={{ color: "rgba(61,219,135,0.4)" }}>✦</span> {tag}
+            </span>
+          ))}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -524,7 +662,6 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <Hero ctaHref={ctaHref} />
-        <MarqueeStrip />
         <AnalysisSection ctaHref={ctaHref} />
         <CompanionSection ctaHref={ctaHref} />
         <SubFeatures />

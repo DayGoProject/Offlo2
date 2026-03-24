@@ -56,14 +56,14 @@ function ScoreCircle({ score }: { score: number }) {
   return (
     <div className="relative w-28 h-28 shrink-0">
       <svg viewBox="0 0 100 100" className="w-28 h-28 -rotate-90">
-        <circle cx="50" cy="50" r="42" fill="none" stroke="var(--score-track)" strokeWidth="7" />
+        <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="7" />
         <circle cx="50" cy="50" r="42" fill="none" stroke={color} strokeWidth="7"
           strokeLinecap="round" strokeDasharray={`${(score / 100) * 264} 264`}
           style={{ transition: "stroke-dasharray 0.6s ease" }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-0.5">
         <span className="text-[1.8rem] font-extrabold leading-none" style={{ color }}>{score}</span>
-        <span className="text-[0.65rem] text-black/50 dark:text-white/50 font-medium">{label}</span>
+        <span className="text-[0.65rem] font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>{label}</span>
       </div>
     </div>
   );
@@ -160,24 +160,27 @@ function AnalysisChat({ analysisId, initialQuestion }: { analysisId: string; ini
   }
 
   return (
-    <section className="flex flex-col gap-0 border border-black/[0.08] dark:border-white/[0.08] rounded-2xl overflow-hidden">
+    <section className="flex flex-col gap-0 rounded-2xl overflow-hidden"
+      style={{ border: "1px solid rgba(255,255,255,0.08)" }}>
       {/* 채팅 헤더 */}
-      <div className="flex items-center gap-2 px-5 py-3.5 bg-brand/[0.05] border-b border-black/[0.06] dark:border-white/[0.06]">
-        <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-        <span className="text-sm font-semibold text-[#0A0A0F] dark:text-white">AI 코치와 대화하기</span>
-        <span className="text-xs text-black/40 dark:text-white/40 ml-1">· 이미지 첨부 가능</span>
+      <div className="flex items-center gap-2 px-5 py-3.5"
+        style={{ background: "rgba(61,219,135,0.05)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#3DDB87" }} />
+        <span className="text-sm font-semibold text-white">AI 코치와 대화하기</span>
+        <span className="text-xs ml-1" style={{ color: "rgba(255,255,255,0.4)" }}>· 이미지 첨부 가능</span>
       </div>
 
       {/* 메시지 목록 */}
-      <div className="flex flex-col gap-4 px-5 py-5 max-h-[480px] overflow-y-auto bg-black/[0.01] dark:bg-white/[0.01]">
+      <div className="flex flex-col gap-4 px-5 py-5 max-h-[400px] overflow-y-auto"
+        style={{ background: "rgba(255,255,255,0.01)" }}>
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
             {/* 아바타 */}
-            <div className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold mt-0.5 ${
-              msg.role === "model"
-                ? "bg-brand/20 text-brand"
-                : "bg-black/[0.08] dark:bg-white/[0.1] text-black/60 dark:text-white/60"
-            }`}>
+            <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold mt-0.5"
+              style={{
+                background: msg.role === "model" ? "rgba(61,219,135,0.2)" : "rgba(255,255,255,0.1)",
+                color: msg.role === "model" ? "#3DDB87" : "rgba(255,255,255,0.6)",
+              }}>
               {msg.role === "model" ? "AI" : "나"}
             </div>
 
@@ -185,15 +188,16 @@ function AnalysisChat({ analysisId, initialQuestion }: { analysisId: string; ini
               {/* 이미지 프리뷰 */}
               {msg.imagePreview && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={msg.imagePreview} alt="첨부 이미지" className="max-w-[200px] rounded-xl border border-black/[0.08] dark:border-white/[0.08]" />
+                <img src={msg.imagePreview} alt="첨부 이미지" className="max-w-[200px] rounded-xl"
+                  style={{ border: "1px solid rgba(255,255,255,0.08)" }} />
               )}
               {/* 텍스트 버블 */}
               {(msg.text && msg.text !== "(이미지 첨부)") && (
-                <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
-                  msg.role === "model"
-                    ? "bg-white/80 dark:bg-white/[0.06] border border-black/[0.07] dark:border-white/[0.07] text-[#0A0A0F] dark:text-white/90 rounded-tl-sm"
-                    : "bg-brand/[0.12] border border-brand/20 text-[#0A0A0F] dark:text-white/90 rounded-tr-sm"
-                }`}>
+                <div className="px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap text-white/90"
+                  style={msg.role === "model"
+                    ? { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "0 1rem 1rem 1rem" }
+                    : { background: "rgba(61,219,135,0.12)", border: "1px solid rgba(61,219,135,0.2)", borderRadius: "1rem 0 1rem 1rem" }
+                  }>
                   {msg.text}
                 </div>
               )}
@@ -204,12 +208,17 @@ function AnalysisChat({ analysisId, initialQuestion }: { analysisId: string; ini
         {/* 로딩 */}
         {sending && (
           <div className="flex gap-3 flex-row">
-            <div className="w-7 h-7 rounded-full shrink-0 bg-brand/20 text-brand flex items-center justify-center text-xs font-bold">AI</div>
-            <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-white/80 dark:bg-white/[0.06] border border-black/[0.07] dark:border-white/[0.07]">
+            <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-bold"
+              style={{ background: "rgba(61,219,135,0.2)", color: "#3DDB87" }}>AI</div>
+            <div className="px-4 py-3 rounded-2xl"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.07)" }}>
               <div className="flex gap-1 items-center h-4">
-                <span className="w-1.5 h-1.5 rounded-full bg-black/30 dark:bg-white/30 animate-bounce [animation-delay:0ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-black/30 dark:bg-white/30 animate-bounce [animation-delay:150ms]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-black/30 dark:bg-white/30 animate-bounce [animation-delay:300ms]" />
+                <span className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0ms]"
+                  style={{ background: "rgba(255,255,255,0.3)" }} />
+                <span className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:150ms]"
+                  style={{ background: "rgba(255,255,255,0.3)" }} />
+                <span className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:300ms]"
+                  style={{ background: "rgba(255,255,255,0.3)" }} />
               </div>
             </div>
           </div>
@@ -219,20 +228,25 @@ function AnalysisChat({ analysisId, initialQuestion }: { analysisId: string; ini
 
       {/* 이미지 첨부 프리뷰 */}
       {pendingImage && (
-        <div className="flex items-center gap-3 px-5 py-3 bg-brand/[0.03] border-t border-black/[0.06] dark:border-white/[0.06]">
+        <div className="flex items-center gap-3 px-5 py-3"
+          style={{ background: "rgba(61,219,135,0.03)", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={pendingImage.preview} alt="첨부 예정" className="w-12 h-12 rounded-lg object-cover border border-black/[0.08] dark:border-white/[0.08]" />
-          <span className="text-xs text-black/50 dark:text-white/50 flex-1 truncate">{pendingImage.file.name}</span>
-          <button onClick={removePendingImage} className="text-black/40 dark:text-white/40 hover:text-red-500 transition-colors text-lg leading-none">×</button>
+          <img src={pendingImage.preview} alt="첨부 예정" className="w-12 h-12 rounded-lg object-cover"
+            style={{ border: "1px solid rgba(255,255,255,0.08)" }} />
+          <span className="text-xs flex-1 truncate" style={{ color: "rgba(255,255,255,0.5)" }}>{pendingImage.file.name}</span>
+          <button onClick={removePendingImage} className="text-lg leading-none hover:text-red-400 transition-colors"
+            style={{ color: "rgba(255,255,255,0.4)" }}>×</button>
         </div>
       )}
 
       {/* 입력창 */}
-      <div className="flex items-end gap-2 px-4 py-3 border-t border-black/[0.06] dark:border-white/[0.06] bg-white/50 dark:bg-black/20">
+      <div className="flex items-end gap-2 px-4 py-3"
+        style={{ borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)" }}>
         {/* 이미지 첨부 버튼 */}
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-xl text-black/40 dark:text-white/40 hover:text-brand hover:bg-brand/10 transition-all"
+          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-xl transition-all hover:bg-[rgba(61,219,135,0.1)]"
+          style={{ color: "rgba(255,255,255,0.4)" }}
           title="이미지 첨부"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -245,7 +259,11 @@ function AnalysisChat({ analysisId, initialQuestion }: { analysisId: string; ini
 
         {/* 텍스트 입력 */}
         <textarea
-          className="flex-1 bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-[#0A0A0F] dark:text-white outline-none focus:border-brand/60 transition-colors resize-none placeholder:text-black/35 dark:placeholder:text-white/35 min-h-[40px] max-h-[120px]"
+          className="flex-1 rounded-xl px-3 py-2.5 text-sm text-white outline-none resize-none min-h-[40px] max-h-[120px]"
+          style={{
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
           placeholder="메시지를 입력하세요..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -259,7 +277,8 @@ function AnalysisChat({ analysisId, initialQuestion }: { analysisId: string; ini
         <button
           onClick={handleSend}
           disabled={(!input.trim() && !pendingImage) || sending}
-          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-xl bg-brand text-[#0A0A0F] hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-9 h-9 shrink-0 flex items-center justify-center rounded-xl hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+          style={{ background: "#3DDB87", color: "#0A0A0F" }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="m22 2-7 20-4-9-9-4 20-7z" />
@@ -310,10 +329,11 @@ export default function ResultPage() {
   if (fetching) return (
     <>
       <Navbar />
-      <main className="min-h-screen pt-20">
+      <main className="min-h-screen pt-20" style={{ background: "#0A0A0F" }}>
         <div className="max-w-2xl mx-auto mt-28 px-6 flex flex-col items-center gap-5">
-          <div className="w-11 h-11 rounded-full border-[3px] border-brand/20 border-t-brand animate-spin" />
-          <p className="text-black/50 dark:text-white/50 text-sm">결과를 불러오는 중...</p>
+          <div className="w-11 h-11 rounded-full border-[3px] animate-spin"
+            style={{ borderColor: "rgba(61,219,135,0.2)", borderTopColor: "#3DDB87" }} />
+          <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>결과를 불러오는 중...</p>
         </div>
       </main>
     </>
@@ -322,10 +342,11 @@ export default function ResultPage() {
   if (error || !analysis) return (
     <>
       <Navbar />
-      <main className="min-h-screen pt-20">
+      <main className="min-h-screen pt-20" style={{ background: "#0A0A0F" }}>
         <div className="max-w-md mx-auto mt-28 px-6 flex flex-col items-center gap-5">
-          <p className="text-red-500 text-sm text-center">{error ?? "알 수 없는 오류가 발생했습니다."}</p>
-          <Link href="/analysis" className="bg-brand text-[#0A0A0F] rounded-full px-7 py-3 font-bold text-sm">다시 분석하기</Link>
+          <p className="text-red-400 text-sm text-center">{error ?? "알 수 없는 오류가 발생했습니다."}</p>
+          <Link href="/analysis" className="rounded-full px-7 py-3 font-bold text-sm"
+            style={{ background: "#3DDB87", color: "#0A0A0F" }}>다시 분석하기</Link>
         </div>
       </main>
     </>
@@ -340,162 +361,213 @@ export default function ResultPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen pt-20">
-        <div className="max-w-2xl mx-auto px-6 py-12 pb-20 flex flex-col gap-8">
+      <main className="min-h-screen pt-20" style={{ background: "#0A0A0F" }}>
+        {/* background glow */}
+        <div
+          className="pointer-events-none fixed inset-0 z-0"
+          style={{
+            background:
+              "radial-gradient(ellipse 55% 45% at 30% 35%, rgba(61,219,135,0.06) 0%, transparent 70%)",
+          }}
+        />
 
-          {/* ── 상단 요약 ── */}
-          <div className="flex items-center gap-8 bg-white/80 dark:bg-white/[0.03] border border-black/[0.07] dark:border-white/[0.07] rounded-2xl px-8 py-7 shadow-sm dark:shadow-none max-[560px]:flex-col max-[560px]:items-center max-[560px]:text-center max-[560px]:px-5 max-[560px]:py-6">
-            <ScoreCircle score={analysis.detoxScore} />
-            <div className="flex-1 flex flex-col gap-2.5">
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-extrabold text-[#0A0A0F] dark:text-white tracking-tight">분석 결과</h1>
-                <span className="text-xs font-semibold text-brand bg-brand/10 border border-brand/20 px-2 py-0.5 rounded-full">{periodLabel}</span>
+        <div className="relative z-10 max-w-[1440px] mx-auto px-6 lg:px-20 py-12 pb-20">
+
+          {/* ── 페이지 헤더 ── */}
+          <div className="flex items-center gap-3 mb-10">
+            <Link href="/analysis" className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-80 transition-opacity"
+              style={{ color: "rgba(255,255,255,0.4)" }}>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 4l-4 4 4 4" />
+              </svg>
+              분석 페이지
+            </Link>
+            <span style={{ color: "rgba(255,255,255,0.15)" }}>/</span>
+            <span className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.4)" }}>결과</span>
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full ml-1"
+              style={{ background: "rgba(61,219,135,0.12)", border: "1px solid rgba(61,219,135,0.2)", color: "#3DDB87" }}>
+              {periodLabel}
+            </span>
+          </div>
+
+          {/* ── 2-column grid ── */}
+          <div className="grid gap-8 lg:gap-12" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+
+            {/* ── LEFT: 점수 + 앱 사용 + 액션 ── */}
+            <div className="flex flex-col gap-6">
+
+              {/* 점수 카드 */}
+              <div className="rounded-2xl p-6"
+                style={{ background: "#111118", border: "1px solid rgba(255,255,255,0.08)" }}>
+                <div className="flex items-center gap-6 mb-5">
+                  <ScoreCircle score={analysis.detoxScore} />
+                  <div className="flex flex-col gap-2">
+                    <h1 className="text-xl font-extrabold text-white tracking-tight">분석 결과</h1>
+                    <div>
+                      <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>총 스크린타임</span>
+                      <p className="text-2xl font-bold text-white">{formatMinutes(analysis.totalMinutes)}</p>
+                    </div>
+                  </div>
+                </div>
+                {analysis.topCategories.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {analysis.topCategories.slice(0, 3).map((cat) => (
+                      <span key={cat.category} className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                        style={{ background: "rgba(61,219,135,0.08)", border: "1px solid rgba(61,219,135,0.2)", color: "#3DDB87" }}>
+                        {cat.category} · {formatMinutes(cat.minutes)}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-xs text-black/40 dark:text-white/40">총 스크린타임</span>
-                <span className="text-2xl font-bold text-[#0A0A0F] dark:text-white">{formatMinutes(analysis.totalMinutes)}</span>
-              </div>
-              {analysis.topCategories.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 max-[560px]:justify-center">
-                  {analysis.topCategories.slice(0, 3).map((cat) => (
-                    <span key={cat.category} className="bg-brand/[0.08] border border-brand/20 text-brand rounded-full px-2.5 py-0.5 text-xs font-semibold">
-                      {cat.category} · {formatMinutes(cat.minutes)}
-                    </span>
+
+              {/* 앱별 사용 시간 */}
+              <div className="flex flex-col gap-4">
+                <h2 className="text-sm font-bold text-white tracking-tight">앱별 사용 시간</h2>
+                <div className="flex flex-col gap-4">
+                  {analysis.apps.map((app, i) => (
+                    <div key={i} className="flex flex-col gap-1.5">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-sm font-semibold" style={{ color: "rgba(255,255,255,0.85)" }}>{app.appName}</span>
+                        <span className="text-sm font-semibold" style={{ color: "#3DDB87" }}>{formatMinutes(app.minutes)}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                        <div className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${(app.minutes / maxMinutes) * 100}%`, background: "linear-gradient(to right, #3DDB87, rgba(61,219,135,0.5))" }} />
+                      </div>
+                      <span className="text-[0.72rem]" style={{ color: "rgba(255,255,255,0.3)" }}>{app.category}</span>
+                    </div>
                   ))}
                 </div>
+              </div>
+
+              {/* 프리미엄 CTA */}
+              {!analysis.isPremium && (
+                <div className="rounded-2xl px-5 py-4 flex items-center justify-between gap-4 flex-wrap"
+                  style={{ background: "rgba(61,219,135,0.05)", border: "1px solid rgba(61,219,135,0.18)" }}>
+                  <p className="text-xs leading-relaxed m-0" style={{ color: "rgba(255,255,255,0.65)" }}>
+                    📊 <strong style={{ color: "#3DDB87" }}>프리미엄</strong>으로 업그레이드하면 차트, 주간 트렌드, 목표 설정을 사용할 수 있어요.
+                  </p>
+                  <button className="rounded-full px-4 py-2 text-xs font-bold cursor-pointer border-none whitespace-nowrap hover:opacity-90 transition-opacity"
+                    style={{ background: "#3DDB87", color: "#0A0A0F" }}>
+                    프리미엄 시작하기
+                  </button>
+                </div>
               )}
-            </div>
-          </div>
 
-          {/* ── 앱별 사용 시간 ── */}
-          <section className="flex flex-col gap-5">
-            <h2 className="text-lg font-bold text-[#0A0A0F] dark:text-white tracking-tight">앱별 사용 시간</h2>
-            <div className="flex flex-col gap-4">
-              {analysis.apps.map((app, i) => (
-                <div key={i} className="flex flex-col gap-1.5">
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-sm font-semibold text-black/85 dark:text-white/85">{app.appName}</span>
-                    <span className="text-sm font-semibold text-brand">{formatMinutes(app.minutes)}</span>
+              {/* 액션 버튼 */}
+              <div className="flex gap-3 flex-wrap">
+                <Link href="/analysis" className="rounded-full px-6 py-3 text-sm font-bold hover:opacity-90 transition-opacity text-center"
+                  style={{ background: "#3DDB87", color: "#0A0A0F" }}>
+                  새로운 분석하기
+                </Link>
+                <Link href="/dashboard" className="rounded-full px-5 py-3 text-sm transition-all text-center"
+                  style={{ background: "transparent", color: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                  대시보드 보기
+                </Link>
+              </div>
+            </div>
+
+            {/* ── RIGHT: 인사이트 + AI 채팅 ── */}
+            <div className="flex flex-col gap-6">
+
+              {/* 핵심 문제 */}
+              {analysis.coreProblems && analysis.coreProblems.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <h2 className="text-sm font-bold text-white tracking-tight">내 사용 패턴의 핵심 문제</h2>
+                  <div className="flex flex-col gap-2.5">
+                    {analysis.coreProblems.map((problem, i) => (
+                      <div key={i} className="flex gap-4 rounded-2xl px-5 py-4"
+                        style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.12)" }}>
+                        <span className="w-7 h-7 min-w-7 rounded-full text-xs font-bold flex items-center justify-center shrink-0"
+                          style={{ background: "rgba(239,68,68,0.12)", color: "#f87171" }}>
+                          {i + 1}
+                        </span>
+                        <p className="text-sm leading-relaxed m-0" style={{ color: "rgba(255,255,255,0.75)" }}>{problem}</p>
+                      </div>
+                    ))}
                   </div>
-                  <div className="h-1.5 bg-black/[0.06] dark:bg-white/[0.06] rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-brand to-brand/50 rounded-full transition-all duration-500"
-                      style={{ width: `${(app.minutes / maxMinutes) * 100}%` }} />
-                  </div>
-                  <span className="text-[0.72rem] text-black/30 dark:text-white/30">{app.category}</span>
                 </div>
-              ))}
-            </div>
-          </section>
+              )}
 
-          {/* ── 핵심 문제 3가지 ── */}
-          {analysis.coreProblems && analysis.coreProblems.length > 0 && (
-            <section className="flex flex-col gap-4">
-              <h2 className="text-lg font-bold text-[#0A0A0F] dark:text-white tracking-tight">내 사용 패턴의 핵심 문제</h2>
+              {/* 심리적 원인 */}
+              {analysis.psychologicalCauses && analysis.psychologicalCauses.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <h2 className="text-sm font-bold text-white tracking-tight">왜 이런 패턴이 생겼을까요?</h2>
+                  <div className="rounded-2xl px-5 py-5 flex flex-col gap-3"
+                    style={{ background: "#111118", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    {analysis.psychologicalCauses.map((cause, i) => (
+                      <div key={i} className="flex gap-3 items-start">
+                        <span className="mt-0.5" style={{ color: "#3DDB87" }}>💡</span>
+                        <p className="text-sm leading-relaxed m-0" style={{ color: "rgba(255,255,255,0.7)" }}>{cause}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 디톡스 전략 */}
+              {analysis.detoxStrategies && analysis.detoxStrategies.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <h2 className="text-sm font-bold text-white tracking-tight">가장 효과적인 디톡스 전략</h2>
+                  <div className="flex flex-col gap-2.5">
+                    {analysis.detoxStrategies.map((strategy, i) => (
+                      <div key={i} className="flex gap-4 rounded-2xl px-5 py-4"
+                        style={{ background: "#111118", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <span className="w-7 h-7 min-w-7 rounded-full text-xs font-bold flex items-center justify-center shrink-0"
+                          style={{ background: "rgba(61,219,135,0.12)", color: "#3DDB87" }}>
+                          {i + 1}
+                        </span>
+                        <p className="text-sm leading-relaxed m-0" style={{ color: "rgba(255,255,255,0.75)" }}>{strategy}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 하루 루틴 */}
+              {analysis.dailyRoutine && (
+                <div className="flex flex-col gap-3">
+                  <h2 className="text-sm font-bold text-white tracking-tight">하루 실천 루틴</h2>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    {[
+                      { icon: "🌅", label: "아침", content: analysis.dailyRoutine.morning },
+                      { icon: "☀️", label: "낮", content: analysis.dailyRoutine.afternoon },
+                      { icon: "🌙", label: "밤", content: analysis.dailyRoutine.evening },
+                    ].map(({ icon, label, content }) => (
+                      <div key={label} className="rounded-2xl px-4 py-4 flex flex-col gap-2"
+                        style={{ background: "#111118", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{icon}</span>
+                          <span className="text-xs font-bold" style={{ color: "#3DDB87" }}>{label}</span>
+                        </div>
+                        <p className="text-sm leading-relaxed m-0" style={{ color: "rgba(255,255,255,0.65)" }}>{content}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 맞춤 디톡스 추천 */}
               <div className="flex flex-col gap-3">
-                {analysis.coreProblems.map((problem, i) => (
-                  <div key={i} className="flex gap-4 bg-red-500/[0.04] border border-red-500/[0.12] rounded-2xl px-5 py-4">
-                    <span className="w-7 h-7 min-w-7 rounded-full bg-red-500/[0.12] text-red-500 text-xs font-bold flex items-center justify-center shrink-0">
-                      {i + 1}
-                    </span>
-                    <p className="text-sm text-black/75 dark:text-white/75 leading-relaxed m-0">{problem}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* ── 심리적 원인 ── */}
-          {analysis.psychologicalCauses && analysis.psychologicalCauses.length > 0 && (
-            <section className="flex flex-col gap-4">
-              <h2 className="text-lg font-bold text-[#0A0A0F] dark:text-white tracking-tight">왜 이런 패턴이 생겼을까요?</h2>
-              <div className="bg-white/80 dark:bg-white/[0.03] border border-black/[0.07] dark:border-white/[0.07] rounded-2xl px-5 py-5 shadow-sm dark:shadow-none flex flex-col gap-3">
-                {analysis.psychologicalCauses.map((cause, i) => (
-                  <div key={i} className="flex gap-3 items-start">
-                    <span className="text-brand mt-0.5">💡</span>
-                    <p className="text-sm text-black/70 dark:text-white/70 leading-relaxed m-0">{cause}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* ── 디톡스 전략 5가지 ── */}
-          {analysis.detoxStrategies && analysis.detoxStrategies.length > 0 && (
-            <section className="flex flex-col gap-4">
-              <h2 className="text-lg font-bold text-[#0A0A0F] dark:text-white tracking-tight">가장 효과적인 디톡스 전략</h2>
-              <div className="flex flex-col gap-3">
-                {analysis.detoxStrategies.map((strategy, i) => (
-                  <div key={i} className="flex gap-4 bg-white/80 dark:bg-white/[0.03] border border-black/[0.07] dark:border-white/[0.07] rounded-2xl px-5 py-4 shadow-sm dark:shadow-none">
-                    <span className="w-7 h-7 min-w-7 rounded-full bg-brand/[0.12] text-brand text-xs font-bold flex items-center justify-center shrink-0">
-                      {i + 1}
-                    </span>
-                    <p className="text-sm text-black/75 dark:text-white/75 leading-relaxed m-0">{strategy}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* ── 하루 루틴 ── */}
-          {analysis.dailyRoutine && (
-            <section className="flex flex-col gap-4">
-              <h2 className="text-lg font-bold text-[#0A0A0F] dark:text-white tracking-tight">하루 실천 루틴</h2>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {[
-                  { icon: "🌅", label: "아침", content: analysis.dailyRoutine.morning },
-                  { icon: "☀️", label: "낮", content: analysis.dailyRoutine.afternoon },
-                  { icon: "🌙", label: "밤", content: analysis.dailyRoutine.evening },
-                ].map(({ icon, label, content }) => (
-                  <div key={label} className="bg-white/80 dark:bg-white/[0.03] border border-black/[0.07] dark:border-white/[0.07] rounded-2xl px-4 py-4 shadow-sm dark:shadow-none flex flex-col gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{icon}</span>
-                      <span className="text-xs font-bold text-brand">{label}</span>
+                <h2 className="text-sm font-bold text-white tracking-tight">맞춤 디톡스 추천</h2>
+                <div className="flex flex-col gap-2.5">
+                  {analysis.recommendations.map((rec, i) => (
+                    <div key={i} className="flex items-start gap-4 rounded-2xl px-5 py-4"
+                      style={{ background: "#111118", border: "1px solid rgba(255,255,255,0.07)" }}>
+                      <span className="w-7 h-7 min-w-7 rounded-full text-xs font-bold flex items-center justify-center shrink-0"
+                        style={{ background: "rgba(61,219,135,0.12)", color: "#3DDB87" }}>{i + 1}</span>
+                      <p className="text-sm leading-relaxed m-0" style={{ color: "rgba(255,255,255,0.75)" }}>{rec}</p>
                     </div>
-                    <p className="text-sm text-black/65 dark:text-white/65 leading-relaxed m-0">{content}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* ── 맞춤 디톡스 추천 (기존) ── */}
-          <section className="flex flex-col gap-4">
-            <h2 className="text-lg font-bold text-[#0A0A0F] dark:text-white tracking-tight">맞춤 디톡스 추천</h2>
-            <div className="flex flex-col gap-3">
-              {analysis.recommendations.map((rec, i) => (
-                <div key={i} className="flex items-start gap-4 bg-white/80 dark:bg-white/[0.03] border border-black/[0.07] dark:border-white/[0.07] rounded-2xl px-5 py-4 shadow-sm dark:shadow-none">
-                  <span className="w-7 h-7 min-w-7 rounded-full bg-brand/[0.12] text-brand text-xs font-bold flex items-center justify-center shrink-0">{i + 1}</span>
-                  <p className="text-sm text-black/75 dark:text-white/75 leading-relaxed m-0">{rec}</p>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              {/* AI 채팅 */}
+              <AnalysisChat analysisId={id} initialQuestion={initialChatQuestion} />
+
             </div>
-          </section>
-
-          {/* ── 프리미엄 CTA ── */}
-          {!analysis.isPremium && (
-            <div className="bg-brand/[0.05] border border-brand/[0.18] rounded-2xl px-6 py-5 flex items-center justify-between gap-4 flex-wrap">
-              <p className="text-sm text-black/65 dark:text-white/65 leading-relaxed m-0">
-                📊 <strong className="text-brand">프리미엄</strong>으로 업그레이드하면 카테고리별 차트, 주간 트렌드, 목표 설정 기능을 사용할 수 있습니다.
-              </p>
-              <button className="bg-brand text-[#0A0A0F] rounded-full px-5 py-2.5 text-sm font-bold cursor-pointer border-none whitespace-nowrap hover:opacity-90 transition-opacity">
-                프리미엄 시작하기
-              </button>
-            </div>
-          )}
-
-          {/* ── AI 채팅 ── */}
-          <AnalysisChat analysisId={id} initialQuestion={initialChatQuestion} />
-
-          {/* ── 액션 버튼 ── */}
-          <div className="flex gap-3 max-[560px]:flex-col">
-            <Link href="/analysis" className="bg-brand text-[#0A0A0F] rounded-full px-7 py-3.5 text-sm font-bold hover:opacity-90 transition-opacity max-[560px]:text-center">
-              새로운 분석하기
-            </Link>
-            <Link href="/dashboard" className="bg-transparent text-black/60 dark:text-white/60 border border-black/[0.12] dark:border-white/[0.12] rounded-full px-6 py-3.5 text-sm hover:text-black/90 dark:hover:text-white/90 hover:border-black/25 dark:hover:border-white/25 transition-all max-[560px]:text-center">
-              대시보드 보기
-            </Link>
           </div>
-
         </div>
       </main>
     </>
