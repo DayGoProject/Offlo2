@@ -15,6 +15,26 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif", "
 const MAX_SIZE_MB = 10;
 const WEEKLY_THRESHOLD = 7; // 주간 분석에 필요한 일간 분석 수
 
+/** 현재 달력 주의 시작(이번 주 월요일 00:00:00)을 반환 */
+function getWeekStart(): Date {
+  const now = new Date();
+  const day = now.getDay(); // 0=일, 1=월 … 6=토
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
+
+/** 두 Date가 같은 날(로컬 기준)인지 확인 */
+function isSameDay(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
 interface DailyRecord {
   id: string;
   detoxScore: number;
@@ -37,6 +57,7 @@ export default function AnalysisPage() {
   // 주간 분석 상태
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(true);
+  const [hasUploadedToday, setHasUploadedToday] = useState(false);
   const [weeklyStatus, setWeeklyStatus] = useState<"idle" | "generating">("idle");
   const [weeklyError, setWeeklyError] = useState<string | null>(null);
 
@@ -49,9 +70,11 @@ export default function AnalysisPage() {
     if (!user) return;
     async function loadRecords() {
       try {
+        const weekStart = Timestamp.fromDate(getWeekStart());
         const q = query(
           collection(db, "users", user!.uid, "analyses"),
           where("periodType", "==", "daily"),
+          where("createdAt", ">=", weekStart),
           orderBy("createdAt", "desc"),
           limit(WEEKLY_THRESHOLD)
         );
@@ -67,6 +90,10 @@ export default function AnalysisPage() {
           };
         });
         setDailyRecords(records);
+        // 가장 최근 기록이 오늘이면 오늘 업로드 완료로 표시
+        if (records.length > 0 && isSameDay(records[0].createdAt, new Date())) {
+          setHasUploadedToday(true);
+        }
       } catch {
         // 인덱스 미생성 등의 오류는 무시 (기능 저하 허용)
       } finally {
@@ -175,7 +202,7 @@ export default function AnalysisPage() {
             </h1>
             <p className="text-base text-black/50 dark:text-white/55 leading-relaxed">
               매일 <strong className="text-[#0A0A0F] dark:text-white">&apos;일&apos; 탭</strong> 스크린샷을 업로드해 일간 분석을 받고,<br />
-              7일이 쌓이면 주간 종합 분석을 받을 수 있어요.
+              한 주(월~일) 안에 7일치가 쌓이면 주간 종합 분석을 받을 수 있어요.
             </p>
           </div>
 
@@ -187,9 +214,14 @@ export default function AnalysisPage() {
                 : "bg-white/70 dark:bg-white/[0.03] border-black/[0.08] dark:border-white/[0.08] shadow-sm dark:shadow-none"
             }`}>
               <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-bold text-[#0A0A0F] dark:text-white">
-                  {canWeekly ? "🎉 주간 분석 준비 완료!" : "📅 이번 주 기록 현황"}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-[#0A0A0F] dark:text-white">
+                    {canWeekly ? "🎉 주간 분석 준비 완료!" : "📅 이번 주 기록 현황"}
+                  </span>
+                  {!canWeekly && (
+                    <span className="text-[10px] text-black/30 dark:text-white/30">매주 월요일 초기화</span>
+                  )}
+                </div>
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                   canWeekly
                     ? "bg-brand/20 text-brand"
@@ -269,7 +301,7 @@ export default function AnalysisPage() {
                     href={`/analysis/result/${dailyRecords[0].id}`}
                     className="text-xs text-brand font-semibold hover:opacity-80 transition-opacity flex items-center gap-1"
                   >
-                    어제 결과 보기
+                    {isSameDay(dailyRecords[0].createdAt, new Date()) ? "오늘 결과 보기" : "최근 결과 보기"}
                     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 8h10M9 4l4 4-4 4" />
                     </svg>
@@ -288,7 +320,28 @@ export default function AnalysisPage() {
               </span>
             </div>
 
-            {!file ? (
+            {hasUploadedToday ? (
+              /* ── 오늘 이미 업로드한 경우 ── */
+              <div className="rounded-2xl border border-brand/20 bg-brand/[0.04] px-6 py-8 flex flex-col items-center gap-3 text-center">
+                <div className="w-12 h-12 rounded-full bg-brand/15 flex items-center justify-center text-brand text-2xl">
+                  ✓
+                </div>
+                <p className="text-base font-bold text-[#0A0A0F] dark:text-white">오늘 분석 완료!</p>
+                <p className="text-sm text-black/50 dark:text-white/50 leading-relaxed">
+                  일간 분석은 하루에 한 번만 가능합니다.<br />
+                  내일 다시 스크린타임 스크린샷을 업로드해주세요.
+                </p>
+                <Link
+                  href={`/analysis/result/${dailyRecords[0]?.id}`}
+                  className="mt-1 text-sm text-brand font-semibold hover:opacity-80 transition-opacity flex items-center gap-1"
+                >
+                  오늘 분석 결과 보기
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 8h10M9 4l4 4-4 4" />
+                  </svg>
+                </Link>
+              </div>
+            ) : !file ? (
               <div
                 className={`border-2 border-dashed rounded-2xl px-8 py-14 flex flex-col items-center gap-3 cursor-pointer transition-all ${
                   dragging

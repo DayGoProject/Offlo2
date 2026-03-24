@@ -250,6 +250,26 @@ export const analyzeScreenTime = onCall(
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) throw new HttpsError("internal", "서버 설정 오류가 발생했습니다.");
 
+    // ── 오늘(KST 기준) 이미 일간 분석이 존재하면 차단 ──
+    const KST_OFFSET = 9 * 60 * 60 * 1000;
+    const kstNow = new Date(Date.now() + KST_OFFSET);
+    kstNow.setUTCHours(0, 0, 0, 0); // KST 오늘 00:00
+    const todayStartUTC = new Date(kstNow.getTime() - KST_OFFSET);
+
+    const todaySnap = await admin.firestore()
+      .collection("users").doc(uid).collection("analyses")
+      .where("periodType", "==", "daily")
+      .where("createdAt", ">=", admin.firestore.Timestamp.fromDate(todayStartUTC))
+      .limit(1)
+      .get();
+
+    if (!todaySnap.empty) {
+      throw new HttpsError(
+        "already-exists",
+        "오늘은 이미 일간 분석을 완료했습니다. 일간 분석은 하루에 한 번만 가능합니다."
+      );
+    }
+
     const bucket = admin.storage().bucket();
     const file = bucket.file(storagePath);
     const [exists] = await file.exists();
@@ -302,6 +322,21 @@ export const analyzeScreenTime = onCall(
   }
 );
 
+/**
+ * 현재 달력 주의 월요일 00:00 KST를 UTC Date로 반환
+ * Cloud Functions 서버는 UTC로 동작하므로 KST(+9) 오프셋을 적용
+ */
+function getKSTWeekStart(): Date {
+  const KST_OFFSET = 9 * 60 * 60 * 1000;
+  const kstNow = new Date(Date.now() + KST_OFFSET);
+  const dayOfWeek = kstNow.getUTCDay(); // 0=일, 1=월 … 6=토
+  const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const kstMonday = new Date(kstNow);
+  kstMonday.setUTCDate(kstNow.getUTCDate() + daysToMonday);
+  kstMonday.setUTCHours(0, 0, 0, 0); // KST 월요일 00:00
+  return new Date(kstMonday.getTime() - KST_OFFSET); // → UTC로 변환
+}
+
 /* ── Cloud Function: generateWeeklyAnalysis ────────────────── */
 
 export const generateWeeklyAnalysis = onCall(
@@ -315,10 +350,12 @@ export const generateWeeklyAnalysis = onCall(
 
     const db = admin.firestore();
 
-    // 가장 최근 일간 분석 7개 로드
+    // 이번 달력 주(월요일 00:00 KST 이후)의 일간 분석만 로드
+    const weekStart = admin.firestore.Timestamp.fromDate(getKSTWeekStart());
     const snap = await db
       .collection("users").doc(uid).collection("analyses")
       .where("periodType", "==", "daily")
+      .where("createdAt", ">=", weekStart)
       .orderBy("createdAt", "desc")
       .limit(7)
       .get();
@@ -326,7 +363,7 @@ export const generateWeeklyAnalysis = onCall(
     if (snap.size < 7) {
       throw new HttpsError(
         "failed-precondition",
-        `주간 분석을 위해 일간 분석이 7개 필요합니다. 현재 ${snap.size}개 있습니다.`
+        `이번 주(월~일) 일간 분석이 ${snap.size}개 있습니다. 7개가 모여야 주간 분석을 시작할 수 있습니다.`
       );
     }
 
