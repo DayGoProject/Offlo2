@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "firebase/auth";
-import { signInWithGoogle, signUpWithEmail, getAuthErrorMessage, getFirebaseErrorCode } from "@/services/auth";
+import { signInWithGoogle, signUpWithEmail, sendVerificationEmail, logout, getAuthErrorMessage, getFirebaseErrorCode } from "@/services/auth";
 import GoogleIcon from "@/components/icons/GoogleIcon";
 
 export default function SignupPage() {
@@ -16,6 +16,8 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [sentEmail, setSentEmail] = useState("");
 
   async function handleGoogleSignup() {
     setError("");
@@ -45,7 +47,10 @@ export default function SignupPage() {
       if (displayName.trim()) {
         await updateProfile(credential.user, { displayName: displayName.trim() });
       }
-      router.push("/");
+      await sendVerificationEmail();
+      setSentEmail(email);
+      await logout();
+      setVerificationSent(true);
     } catch (err: unknown) {
       setError(getAuthErrorMessage(getFirebaseErrorCode(err)));
     } finally {
@@ -55,6 +60,33 @@ export default function SignupPage() {
 
   const inputClass =
     "bg-black/[0.04] dark:bg-white/[0.06] border border-black/[0.1] dark:border-white/[0.1] rounded-xl px-4 py-3 text-sm text-[#0A0A0F] dark:text-white outline-none focus:border-brand transition-colors w-full placeholder:text-black/35 dark:placeholder:text-white/35";
+
+  if (verificationSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="w-full max-w-md border border-black/[0.1] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.03] rounded-2xl p-10 shadow-sm dark:shadow-none text-center">
+          <div className="text-4xl mb-4">📧</div>
+          <h1 className="text-2xl font-extrabold tracking-tight mb-2 text-[#0A0A0F] dark:text-white">
+            인증 메일을 보냈습니다
+          </h1>
+          <p className="text-sm text-black/50 dark:text-white/50 mb-1">
+            아래 주소로 인증 링크를 발송했습니다.
+          </p>
+          <p className="text-sm font-semibold text-brand mb-6">{sentEmail}</p>
+          <p className="text-sm text-black/50 dark:text-white/50 mb-8">
+            받은 편지함에서 인증 링크를 클릭하면 가입이 완료됩니다.<br />
+            스팸 폴더도 확인해보세요.
+          </p>
+          <Link
+            href="/login"
+            className="inline-block bg-brand text-[#0A0A0F] text-sm font-bold py-3 px-8 rounded-full hover:opacity-90 transition-opacity"
+          >
+            로그인 하러 가기
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">

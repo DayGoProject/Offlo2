@@ -60,7 +60,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
   ];
 
   return (
-    <section className="relative overflow-hidden flex flex-col" style={{ minHeight: "100svh", background: "#0A0A0F" }}>
+    <section className="relative overflow-hidden flex flex-col" style={{ minHeight: "100svh", background: "var(--bg-page)" }}>
       {/* 배경 글로우 */}
       <div
         aria-hidden
@@ -76,7 +76,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
         className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.015) 1px, transparent 1px)",
+            "linear-gradient(var(--grid-line) 1px, transparent 1px),linear-gradient(90deg,var(--grid-line) 1px, transparent 1px)",
           backgroundSize: "80px 80px",
         }}
       />
@@ -102,8 +102,8 @@ function Hero({ ctaHref }: { ctaHref: string }) {
 
           {/* 헤드라인 */}
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1} className="mb-9">
-            <div className="font-extrabold text-white" style={{ fontSize: "clamp(44px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>스마트폰이</div>
-            <div className="font-extrabold text-white" style={{ fontSize: "clamp(44px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>당신의 시간을</div>
+            <div className="font-extrabold text-[var(--text-primary)]" style={{ fontSize: "clamp(44px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>스마트폰이</div>
+            <div className="font-extrabold text-[var(--text-primary)]" style={{ fontSize: "clamp(44px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>당신의 시간을</div>
             <div className="font-extrabold text-gradient" style={{ fontSize: "clamp(44px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>빼앗고 있습니다.</div>
           </motion.div>
 
@@ -111,7 +111,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
           <motion.p
             variants={fadeUp} initial="hidden" animate="visible" custom={2}
             className="text-base leading-[1.8] mb-10"
-            style={{ color: "rgba(255,255,255,0.42)", maxWidth: "480px" }}
+            style={{ color: "var(--text-muted)", maxWidth: "480px" }}
           >
             스크린타임 스크린샷 하나를 업로드하면 Gemini AI가<br />
             앱별 사용 패턴을 분석하고 디톡스 플랜을 제안합니다.
@@ -131,7 +131,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
             <Link
               href="#analysis"
               className="flex items-center gap-2 px-7 py-3.5 rounded-full text-sm transition-all"
-              style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.45)" }}
+              style={{ border: "1px solid var(--border-medium)", color: "var(--text-muted)" }}
             >
               작동 방식 보기
             </Link>
@@ -145,10 +145,10 @@ function Hero({ ctaHref }: { ctaHref: string }) {
               { val: "무료", label: "기본 플랜" },
             ].map((stat, i) => (
               <div key={stat.label} className="flex items-center gap-7">
-                {i > 0 && <div className="w-px h-8" style={{ background: "rgba(255,255,255,0.08)" }} />}
+                {i > 0 && <div className="w-px h-8" style={{ background: "var(--border-card)" }} />}
                 <div className="flex flex-col gap-1">
                   <span className="font-extrabold text-brand" style={{ fontSize: "24px", letterSpacing: "-0.02em" }}>{stat.val}</span>
-                  <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.3)" }}>{stat.label}</span>
+                  <span className="text-[11px]" style={{ color: "var(--text-faint)" }}>{stat.label}</span>
                 </div>
               </div>
             ))}
@@ -180,15 +180,15 @@ function Hero({ ctaHref }: { ctaHref: string }) {
             className="absolute rounded-3xl"
             style={{
               top: "40px", left: "20px", width: "560px",
-              background: "#111118", border: "1px solid rgba(255,255,255,0.1)",
-              boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(61,219,135,0.06)",
+              background: "var(--bg-card)", border: "1px solid var(--border-strong)",
+              boxShadow: "var(--shadow-card)",
               padding: "32px",
             }}
           >
             <div className="flex items-center justify-between mb-7">
               <div className="flex items-center gap-2.5">
                 <div className="w-2 h-2 rounded-full bg-brand" />
-                <span className="text-white font-bold" style={{ fontSize: "15px" }}>오늘의 분석 결과</span>
+                <span className="text-[var(--text-primary)] font-bold" style={{ fontSize: "15px" }}>오늘의 분석 결과</span>
               </div>
               <span
                 className="font-bold text-brand px-3 py-1 rounded-full"
@@ -198,18 +198,18 @@ function Hero({ ctaHref }: { ctaHref: string }) {
             <div className="flex items-center gap-7 mb-7">
               <div className="relative flex-shrink-0" style={{ width: "96px", height: "96px" }}>
                 <svg width="96" height="96" viewBox="0 0 96 96">
-                  <circle cx="48" cy="48" r="38" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7" />
+                  <circle cx="48" cy="48" r="38" fill="none" stroke="var(--score-track)" strokeWidth="7" />
                   <circle cx="48" cy="48" r="38" fill="none" stroke="#3DDB87" strokeWidth="7"
                     strokeLinecap="round" strokeDasharray="170 239" transform="rotate(-90 48 48)" />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="font-extrabold text-brand leading-none" style={{ fontSize: "26px" }}>71</span>
-                  <span style={{ fontSize: "10px", color: "rgba(255,255,255,0.35)" }}>점</span>
+                  <span style={{ fontSize: "10px", color: "var(--text-faint)" }}>점</span>
                 </div>
               </div>
               <div>
-                <div className="mb-1" style={{ fontSize: "13px", color: "rgba(255,255,255,0.3)" }}>총 스크린타임</div>
-                <div className="font-extrabold text-white" style={{ fontSize: "34px", letterSpacing: "-0.03em", lineHeight: 1 }}>5h 38m</div>
+                <div className="mb-1" style={{ fontSize: "13px", color: "var(--text-faint)" }}>총 스크린타임</div>
+                <div className="font-extrabold text-[var(--text-primary)]" style={{ fontSize: "34px", letterSpacing: "-0.03em", lineHeight: 1 }}>5h 38m</div>
                 <div className="flex gap-1.5 mt-2.5">
                   {["SNS", "엔터테인먼트"].map((tag) => (
                     <span key={tag} className="text-brand px-2.5 py-0.5 rounded-full"
@@ -224,10 +224,10 @@ function Hero({ ctaHref }: { ctaHref: string }) {
               {previewApps.map((app) => (
                 <div key={app.name} className="flex flex-col gap-2">
                   <div className="flex justify-between">
-                    <span className="font-semibold" style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)" }}>{app.name}</span>
+                    <span className="font-semibold" style={{ fontSize: "14px", color: "var(--text-primary-soft)" }}>{app.name}</span>
                     <span className="font-bold text-brand" style={{ fontSize: "14px" }}>{app.time}</span>
                   </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--bg-bar)" }}>
                     <div className="h-full rounded-full" style={{ width: `${app.pct}%`, background: "linear-gradient(90deg,#3DDB87,rgba(61,219,135,0.3))" }} />
                   </div>
                 </div>
@@ -240,7 +240,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
             className="absolute rounded-2xl"
             style={{
               top: "468px", left: "20px", width: "560px",
-              background: "#0F1A14", border: "1px solid rgba(61,219,135,0.18)",
+              background: "var(--bg-chat)", border: "1px solid rgba(61,219,135,0.18)",
               padding: "20px 24px",
             }}
           >
@@ -250,7 +250,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
                 style={{ width: "28px", height: "28px", minWidth: "28px", fontSize: "10px", background: "rgba(61,219,135,0.15)" }}
               >AI</div>
               <div className="rounded-2xl rounded-tl-sm px-4 py-3 leading-relaxed"
-                style={{ fontSize: "13px", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.8)" }}>
+                style={{ fontSize: "13px", background: "var(--bg-bar-sm)", color: "var(--text-primary-soft)" }}>
                 취침 전 인스타그램 사용이{" "}
                 <span className="text-brand font-bold">1시간 42분</span>이에요.
                 오늘 밤 11시부터 앱 잠금을 설정해볼까요? 🌿
@@ -258,7 +258,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
             </div>
             <div className="flex justify-end">
               <div className="rounded-2xl rounded-tr-sm px-4 py-2"
-                style={{ fontSize: "13px", background: "rgba(61,219,135,0.1)", border: "1px solid rgba(61,219,135,0.18)", color: "rgba(255,255,255,0.75)" }}>
+                style={{ fontSize: "13px", background: "rgba(61,219,135,0.1)", border: "1px solid rgba(61,219,135,0.18)", color: "var(--text-primary-soft)" }}>
                 좋아요, 설정해볼게요!
               </div>
             </div>
@@ -267,7 +267,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
           {/* 미니 배지 카드: 반려식물 */}
           <div
             className="absolute flex items-center gap-3 rounded-2xl"
-            style={{ top: "668px", left: "20px", width: "264px", background: "#111118", border: "1px solid rgba(255,255,255,0.08)", padding: "16px 18px" }}
+            style={{ top: "668px", left: "20px", width: "264px", background: "var(--bg-card)", border: "1px solid var(--border-card)", padding: "16px 18px" }}
           >
             <div className="rounded-xl flex-shrink-0 flex items-center justify-center"
               style={{ width: "44px", height: "44px", background: "rgba(61,219,135,0.08)", border: "1px solid rgba(61,219,135,0.15)" }}>
@@ -276,7 +276,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
               </svg>
             </div>
             <div>
-              <div className="font-bold text-white mb-0.5" style={{ fontSize: "13px" }}>반려식물</div>
+              <div className="font-bold text-[var(--text-primary)] mb-0.5" style={{ fontSize: "13px" }}>반려식물</div>
               <div className="text-brand" style={{ fontSize: "12px" }}>30일차 · 나무 단계</div>
             </div>
           </div>
@@ -284,7 +284,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
           {/* 미니 배지 카드: 연속 달성 */}
           <div
             className="absolute flex items-center gap-3 rounded-2xl"
-            style={{ top: "668px", left: "300px", width: "280px", background: "#111118", border: "1px solid rgba(255,255,255,0.08)", padding: "16px 18px" }}
+            style={{ top: "668px", left: "300px", width: "280px", background: "var(--bg-card)", border: "1px solid var(--border-card)", padding: "16px 18px" }}
           >
             <div className="rounded-xl flex-shrink-0 flex items-center justify-center"
               style={{ width: "44px", height: "44px", background: "rgba(61,219,135,0.08)", border: "1px solid rgba(61,219,135,0.15)" }}>
@@ -293,7 +293,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
               </svg>
             </div>
             <div>
-              <div className="font-bold text-white mb-0.5" style={{ fontSize: "13px" }}>7일 연속 달성</div>
+              <div className="font-bold text-[var(--text-primary)] mb-0.5" style={{ fontSize: "13px" }}>7일 연속 달성</div>
               <div className="text-brand" style={{ fontSize: "12px" }}>디톡스 뱃지 획득!</div>
             </div>
           </div>
@@ -305,7 +305,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
       {/* 하단 피처 스트립 */}
       <div
         className="relative border-t py-3.5 overflow-hidden z-10"
-        style={{ borderColor: "rgba(255,255,255,0.05)", background: "rgba(255,255,255,0.01)" }}
+        style={{ borderColor: "var(--border-strip)", background: "var(--bg-strip)" }}
       >
         <div className="flex animate-marquee whitespace-nowrap gap-12">
           {[
@@ -315,7 +315,7 @@ function Hero({ ctaHref }: { ctaHref: string }) {
             "AI 스크린타임 분석", "반려식물 키우기", "반려동물 성장", "디지털 디톡스",
             "뱃지 & 칭호", "목표 설정", "분석 히스토리", "개인정보 보호",
           ].map((tag, i) => (
-            <span key={i} className="flex items-center gap-3 text-xs" style={{ color: "rgba(255,255,255,0.18)" }}>
+            <span key={i} className="flex items-center gap-3 text-xs" style={{ color: "var(--text-ghost)" }}>
               <span style={{ color: "rgba(61,219,135,0.4)" }}>✦</span> {tag}
             </span>
           ))}

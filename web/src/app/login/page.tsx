@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAdditionalUserInfo } from "firebase/auth";
-import { signInWithGoogle, signInWithEmail, getAuthErrorMessage, getFirebaseErrorCode } from "@/services/auth";
+import { signInWithGoogle, signInWithEmail, logout, getAuthErrorMessage, getFirebaseErrorCode } from "@/services/auth";
 import GoogleIcon from "@/components/icons/GoogleIcon";
 
 export default function LoginPage() {
@@ -40,7 +40,12 @@ export default function LoginPage() {
     setError("");
     setEmailLoading(true);
     try {
-      await signInWithEmail(email, password);
+      const credential = await signInWithEmail(email, password);
+      if (!credential.user.emailVerified) {
+        await logout();
+        setError("이메일 인증이 완료되지 않았습니다. 받은 편지함을 확인해주세요.");
+        return;
+      }
       router.push("/");
     } catch (err: unknown) {
       setError(getAuthErrorMessage(getFirebaseErrorCode(err)));

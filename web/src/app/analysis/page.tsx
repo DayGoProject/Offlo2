@@ -194,7 +194,7 @@ export default function AnalysisPage() {
       <Navbar />
       <main
         className="min-h-screen pt-20"
-        style={{ background: "#0A0A0F" }}
+        style={{ background: "var(--bg-page)" }}
       >
         {/* background glow */}
         <div
@@ -216,12 +216,12 @@ export default function AnalysisPage() {
               <span className="w-1.5 h-1.5 rounded-full bg-[#3DDB87]" />
               <span className="text-xs font-semibold text-[#3DDB87]">AI 스크린타임 분석</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--text-primary)] mb-3">
               오늘의 스크린타임을<br />
               <span style={{ color: "#3DDB87" }}>분석해드릴게요</span>
             </h1>
-            <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
-              매일 <strong className="text-white">&apos;일&apos; 탭</strong> 스크린샷을 업로드해 일간 분석을 받고,
+            <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+              매일 <strong className="text-[var(--text-primary)]">&apos;일&apos; 탭</strong> 스크린샷을 업로드해 일간 분석을 받고,
               7일치가 쌓이면 주간 종합 분석을 받을 수 있어요.
             </p>
           </div>
@@ -233,7 +233,7 @@ export default function AnalysisPage() {
             <div className="flex flex-col gap-6">
               {/* 섹션 라벨 */}
               <div className="flex items-center gap-3">
-                <h2 className="text-sm font-bold text-white">일간 분석 업로드</h2>
+                <h2 className="text-sm font-bold text-[var(--text-primary)]">일간 분석 업로드</h2>
                 <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full"
                   style={{ background: "rgba(61,219,135,0.12)", border: "1px solid rgba(61,219,135,0.2)", color: "#3DDB87" }}>
                   &apos;일&apos; 탭 화면
@@ -248,8 +248,8 @@ export default function AnalysisPage() {
                     style={{ background: "rgba(61,219,135,0.15)", color: "#3DDB87" }}>
                     ✓
                   </div>
-                  <p className="text-base font-bold text-white">오늘 분석 완료!</p>
-                  <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  <p className="text-base font-bold text-[var(--text-primary)]">오늘 분석 완료!</p>
+                  <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                     일간 분석은 하루에 한 번만 가능합니다.<br />
                     내일 다시 스크린타임 스크린샷을 업로드해주세요.
                   </p>
@@ -268,8 +268,8 @@ export default function AnalysisPage() {
                 <div
                   className="rounded-2xl px-8 py-14 flex flex-col items-center gap-3 cursor-pointer transition-all"
                   style={{
-                    border: `2px dashed ${dragging ? "#3DDB87" : "rgba(255,255,255,0.12)"}`,
-                    background: dragging ? "rgba(61,219,135,0.06)" : "rgba(255,255,255,0.02)",
+                    border: `2px dashed ${dragging ? "#3DDB87" : "var(--border-medium)"}`,
+                    background: dragging ? "rgba(61,219,135,0.06)" : "var(--bg-subtle)",
                   }}
                   onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
                   onDragLeave={() => setDragging(false)}
@@ -290,10 +290,10 @@ export default function AnalysisPage() {
                       <line x1="12" y1="3" x2="12" y2="15" />
                     </svg>
                   </div>
-                  <p className="text-base font-semibold" style={{ color: "rgba(255,255,255,0.8)" }}>
+                  <p className="text-base font-semibold" style={{ color: "var(--text-primary-soft)" }}>
                     {dragging ? "여기에 놓으세요" : "클릭하거나 이미지를 드래그해서 업로드"}
                   </p>
-                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>JPG, PNG, HEIC, WEBP · 최대 10MB</p>
+                  <p className="text-xs" style={{ color: "var(--text-faint)" }}>JPG, PNG, HEIC, WEBP · 최대 10MB</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-6">
@@ -301,17 +301,17 @@ export default function AnalysisPage() {
                     <div className="flex flex-col items-center gap-4 py-14 px-8">
                       <div className="w-12 h-12 rounded-full border-[3px] border-t-[#3DDB87] animate-spin"
                         style={{ borderColor: "rgba(61,219,135,0.2)", borderTopColor: "#3DDB87" }} />
-                      <p className="text-lg font-semibold text-white">
+                      <p className="text-lg font-semibold text-[var(--text-primary)]">
                         {status === "uploading" ? "이미지 업로드 중..." : "AI가 분석하고 있습니다..."}
                       </p>
-                      <p className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>잠시만 기다려주세요 (10~20초)</p>
+                      <p className="text-sm" style={{ color: "var(--text-muted)" }}>잠시만 기다려주세요 (10~20초)</p>
                     </div>
                   ) : (
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={preview!} alt="업로드된 스크린샷"
                         className="max-w-full max-h-[400px] rounded-2xl object-contain"
-                        style={{ border: "1px solid rgba(255,255,255,0.08)" }} />
+                        style={{ border: "1px solid var(--border-card)" }} />
                       <div className="flex gap-3">
                         <button
                           className="font-bold px-8 py-3.5 rounded-full cursor-pointer hover:opacity-90 transition-opacity text-base border-none"
@@ -324,8 +324,8 @@ export default function AnalysisPage() {
                           className="rounded-full px-6 py-3.5 text-sm cursor-pointer transition-all"
                           style={{
                             background: "transparent",
-                            color: "rgba(255,255,255,0.5)",
-                            border: "1px solid rgba(255,255,255,0.12)",
+                            color: "var(--text-secondary)",
+                            border: "1px solid var(--border-medium)",
                           }}
                           onClick={resetFile}
                         >
@@ -348,21 +348,21 @@ export default function AnalysisPage() {
               {/* 스크린샷 가이드 */}
               <div className="pt-2">
                 <p className="text-[10px] font-semibold uppercase tracking-widest mb-3"
-                  style={{ color: "rgba(255,255,255,0.3)" }}>
+                  style={{ color: "var(--text-faint)" }}>
                   &apos;일&apos; 탭 스크린샷 찍는 방법
                 </p>
                 <div className="grid grid-cols-2 gap-3 max-[480px]:grid-cols-1">
                   <div className="rounded-2xl px-5 py-4 flex flex-col gap-2"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-card)" }}>
                     <span className="text-xs font-bold" style={{ color: "#3DDB87" }}>iPhone / iPad</span>
-                    <p className="text-[0.8rem] leading-relaxed m-0" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    <p className="text-[0.8rem] leading-relaxed m-0" style={{ color: "var(--text-secondary)" }}>
                       설정 → 스크린 타임 → 상단 <strong style={{ color: "#3DDB87" }}>&apos;일&apos;</strong> 탭 선택 후 캡처
                     </p>
                   </div>
                   <div className="rounded-2xl px-5 py-4 flex flex-col gap-2"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-card)" }}>
                     <span className="text-xs font-bold" style={{ color: "#3DDB87" }}>Android (갤럭시 등)</span>
-                    <p className="text-[0.8rem] leading-relaxed m-0" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    <p className="text-[0.8rem] leading-relaxed m-0" style={{ color: "var(--text-secondary)" }}>
                       설정 → 디지털 웰빙 및 자녀 보호 → 오늘 사용 시간 화면을 캡처
                     </p>
                   </div>
@@ -375,22 +375,22 @@ export default function AnalysisPage() {
               {!recordsLoading && (
                 <div className="rounded-2xl p-6"
                   style={{
-                    background: canWeekly ? "rgba(61,219,135,0.05)" : "#111118",
-                    border: canWeekly ? "1px solid rgba(61,219,135,0.25)" : "1px solid rgba(255,255,255,0.08)",
+                    background: canWeekly ? "rgba(61,219,135,0.05)" : "var(--bg-card)",
+                    border: canWeekly ? "1px solid rgba(61,219,135,0.25)" : "1px solid var(--border-card)",
                   }}>
                   <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-white">
+                      <span className="text-sm font-bold text-[var(--text-primary)]">
                         {canWeekly ? "🎉 주간 분석 준비 완료!" : "📅 이번 주 기록 현황"}
                       </span>
                       {!canWeekly && (
-                        <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>매주 월요일 초기화</span>
+                        <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>매주 월요일 초기화</span>
                       )}
                     </div>
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-full"
                       style={{
-                        background: canWeekly ? "rgba(61,219,135,0.2)" : "rgba(255,255,255,0.08)",
-                        color: canWeekly ? "#3DDB87" : "rgba(255,255,255,0.5)",
+                        background: canWeekly ? "rgba(61,219,135,0.2)" : "var(--border-card)",
+                        color: canWeekly ? "#3DDB87" : "var(--text-secondary)",
                       }}>
                       {dailyRecords.length}/{WEEKLY_THRESHOLD}일
                     </span>
@@ -409,14 +409,14 @@ export default function AnalysisPage() {
                           <div
                             className="w-full h-9 rounded-lg flex items-center justify-center text-[11px] font-bold transition-all"
                             style={{
-                              background: hasRecord ? barColor : "rgba(255,255,255,0.06)",
-                              color: hasRecord ? "#0A0A0F" : "rgba(255,255,255,0.2)",
+                              background: hasRecord ? barColor : "var(--bg-bar)",
+                              color: hasRecord ? "#0A0A0F" : "var(--text-ghost)",
                             }}
                             title={hasRecord ? `${rec?.createdAt?.toLocaleDateString("ko-KR")} · ${score}점` : "미기록"}
                           >
                             {hasRecord ? score : ""}
                           </div>
-                          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.3)" }}>{days[i]}</span>
+                          <span className="text-[10px]" style={{ color: "var(--text-faint)" }}>{days[i]}</span>
                         </div>
                       );
                     })}
@@ -424,7 +424,7 @@ export default function AnalysisPage() {
 
                   {canWeekly ? (
                     <div className="flex flex-col gap-3">
-                      <p className="text-sm" style={{ color: "rgba(255,255,255,0.6)" }}>
+                      <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
                         7일치 일간 분석이 완성됐어요. 한 주의 패턴을 종합 분석해 드릴게요.
                       </p>
                       {weeklyError && (
@@ -456,7 +456,7 @@ export default function AnalysisPage() {
                       </button>
                     </div>
                   ) : (
-                    <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
                       {dailyRecords.length === 0
                         ? "아직 기록이 없어요. 오늘 스크린타임을 분석해보세요!"
                         : `${needed}일 더 기록하면 주간 종합 분석을 받을 수 있어요.`}
@@ -466,8 +466,8 @@ export default function AnalysisPage() {
                   {/* 최근 기록 바로가기 */}
                   {dailyRecords.length > 0 && (
                     <div className="mt-4 pt-4 flex items-center justify-between"
-                      style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                      <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>최근 분석 결과</span>
+                      style={{ borderTop: "1px solid var(--bg-bar)" }}>
+                      <span className="text-xs" style={{ color: "var(--text-muted)" }}>최근 분석 결과</span>
                       <Link
                         href={`/analysis/result/${dailyRecords[0].id}`}
                         className="text-xs font-semibold flex items-center gap-1 hover:opacity-80 transition-opacity"
@@ -492,7 +492,7 @@ export default function AnalysisPage() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-white mb-1">더 정확한 분석을 위한 팁</p>
-                  <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                     스크린샷은 오늘 하루가 거의 끝난 저녁에 찍을수록 더 정확한 분석 결과를 받을 수 있어요.
                     &apos;일&apos; 탭 전체가 보이도록 캡처해주세요.
                   </p>

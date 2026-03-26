@@ -3,6 +3,7 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   signOut,
 } from "firebase/auth";
 import { auth } from "@/services/firebase";
@@ -21,6 +22,12 @@ export async function signInWithEmail(email: string, password: string) {
 
 export async function signUpWithEmail(email: string, password: string) {
   return createUserWithEmailAndPassword(auth, email, password);
+}
+
+export async function sendVerificationEmail() {
+  if (auth.currentUser) {
+    await sendEmailVerification(auth.currentUser);
+  }
 }
 
 export async function logout() {
