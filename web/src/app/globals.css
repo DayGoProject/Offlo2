@@ -21,12 +21,52 @@
      SVG stroke/fill 등     → var(--tw-*) 사용
    ──────────────────────────────────────────────────────────── */
 :root {
-  --score-track: rgba(0, 0, 0, 0.08);     /* 스코어 원형 트랙 배경 */
-  --border-subtle: rgba(0, 0, 0, 0.08);   /* 미세 보더 */
+  --score-track: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.08);
+
+  --bg-page: #F4F6F4;
+  --bg-card: rgba(255, 255, 255, 0.90);
+  --bg-chat: rgba(237, 248, 242, 0.95);
+  --bg-subtle: rgba(0, 0, 0, 0.03);
+  --bg-bar: rgba(0, 0, 0, 0.06);
+  --bg-bar-sm: rgba(0, 0, 0, 0.04);
+  --bg-strip: rgba(0, 0, 0, 0.01);
+  --border-card: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.10);
+  --border-medium: rgba(0, 0, 0, 0.09);
+  --border-strip: rgba(0, 0, 0, 0.05);
+  --text-primary: #0A0A0F;
+  --text-primary-soft: rgba(0, 0, 0, 0.80);
+  --text-secondary: rgba(0, 0, 0, 0.50);
+  --text-muted: rgba(0, 0, 0, 0.42);
+  --text-faint: rgba(0, 0, 0, 0.32);
+  --text-ghost: rgba(0, 0, 0, 0.18);
+  --grid-line: rgba(0, 0, 0, 0.04);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.10);
 }
 .dark {
   --score-track: rgba(255, 255, 255, 0.08);
   --border-subtle: rgba(255, 255, 255, 0.08);
+
+  --bg-page: #0A0A0F;
+  --bg-card: #111118;
+  --bg-chat: #0F1A14;
+  --bg-subtle: rgba(255, 255, 255, 0.03);
+  --bg-bar: rgba(255, 255, 255, 0.06);
+  --bg-bar-sm: rgba(255, 255, 255, 0.05);
+  --bg-strip: rgba(255, 255, 255, 0.01);
+  --border-card: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.10);
+  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-strip: rgba(255, 255, 255, 0.05);
+  --text-primary: #FFFFFF;
+  --text-primary-soft: rgba(255, 255, 255, 0.80);
+  --text-secondary: rgba(255, 255, 255, 0.50);
+  --text-muted: rgba(255, 255, 255, 0.42);
+  --text-faint: rgba(255, 255, 255, 0.35);
+  --text-ghost: rgba(255, 255, 255, 0.18);
+  --grid-line: rgba(255, 255, 255, 0.015);
+  --shadow-card: 0 24px 80px rgba(0, 0, 0, 0.60), 0 0 0 1px rgba(61, 219, 135, 0.06);
 }
 
 *, *::before, *::after {
