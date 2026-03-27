@@ -21,6 +21,10 @@ node_modules/
 # Cloud Functions build output
 functions/lib/
 
+# Extension build output & Firebase config (contains real keys)
+extension/dist/
+extension/src/firebase-config.ts
+
 # OS
 .DS_Store
 Thumbs.db

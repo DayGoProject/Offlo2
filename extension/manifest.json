@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Offlo — 디지털 디톡스",
+  "version": "1.0.0",
+  "description": "브라우저 사용 시간을 추적하고 반려식물을 키워보세요",
+  "permissions": ["tabs", "storage", "alarms", "activeTab", "idle"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "dist/background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Offlo"
+  }
+}

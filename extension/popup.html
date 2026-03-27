@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Offlo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 320px;
+      min-height: 200px;
+      background: #0A0A0F;
+      color: #fff;
+      font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    #app { padding: 0 0 8px; }
+
+    /* ── 헤더 ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .logo {
+      font-size: 16px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #3DDB87, #a8f0cd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .tagline { font-size: 11px; color: rgba(255,255,255,0.4); }
+
+    /* ── 식물 카드 ── */
+    .plant-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 12px 12px 0;
+      padding: 12px 14px;
+      background: rgba(61,219,135,0.06);
+      border: 1px solid rgba(61,219,135,0.18);
+      border-radius: 14px;
+    }
+    .plant-emoji { font-size: 32px; line-height: 1; }
+    .plant-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .lv {
+      font-size: 10px;
+      font-weight: 600;
+      color: #3DDB87;
+      background: rgba(61,219,135,0.12);
+      border: 1px solid rgba(61,219,135,0.2);
+      border-radius: 999px;
+      padding: 1px 6px;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+    .plant-stat { font-size: 11px; color: rgba(255,255,255,0.5); }
+    .plant-stat strong { color: #3DDB87; }
+    .plant-next { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+
+    /* ── 통계 박스 ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin: 10px 12px 0;
+    }
+    .stat-box {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 8px 6px;
+      text-align: center;
+    }
+    .stat-box.green { border-color: rgba(61,219,135,0.2); background: rgba(61,219,135,0.05); }
+    .stat-box.red   { border-color: rgba(239,68,68,0.2);  background: rgba(239,68,68,0.05); }
+    .stat-val { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+    .stat-box.green .stat-val { color: #3DDB87; }
+    .stat-box.red   .stat-val { color: #f87171; }
+    .stat-label { font-size: 10px; color: rgba(255,255,255,0.4); }
+
+    /* ── 사이트 목록 ── */
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.35);
+      padding: 12px 16px 6px;
+    }
+    .site-list { padding: 0 12px; display: flex; flex-direction: column; gap: 4px; }
+    .site-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+    }
+    .site-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .site-dot.green { background: #3DDB87; }
+    .site-dot.red   { background: #f87171; }
+    .site-domain { flex: 1; font-size: 12px; color: rgba(255,255,255,0.75); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .site-time { font-size: 11px; color: rgba(255,255,255,0.4); flex-shrink: 0; }
+
+    /* ── 로그인 폼 ── */
+    .section { padding: 16px; }
+    .hint {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+      margin-bottom: 14px;
+      line-height: 1.6;
+    }
+    .form { display: flex; flex-direction: column; gap: 8px; }
+    .input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 13px;
+      color: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: inherit;
+    }
+    .input::placeholder { color: rgba(255,255,255,0.3); }
+    .input:focus { border-color: #3DDB87; }
+
+    /* ── 버튼 ── */
+    .btn-primary {
+      width: 100%;
+      background: #3DDB87;
+      color: #0A0A0F;
+      border: none;
+      border-radius: 999px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      font-family: inherit;
+      margin-top: 2px;
+    }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ghost {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 999px;
+      color: rgba(255,255,255,0.45);
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: opacity 0.2s;
+    }
+    .btn-ghost:hover { opacity: 0.75; }
+
+    /* ── 기타 ── */
+    .error {
+      font-size: 11px;
+      color: #f87171;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 8px;
+      padding: 7px 10px;
+      text-align: center;
+    }
+    .empty {
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+      text-align: center;
+      padding: 16px;
+      line-height: 1.6;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px 16px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.35);
+    }
+    .footer {
+      padding: 10px 16px 4px;
+      text-align: center;
+    }
+    .link {
+      font-size: 11px;
+      color: #3DDB87;
+      text-decoration: none;
+    }
+    .link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="loading">로딩 중...</div>
+  </div>
+  <script src="dist/popup.js"></script>
+</body>
+</html>
