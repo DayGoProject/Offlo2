@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  uid       String     @unique
+  email     String     @unique
+  name      String
+  premium   Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  analyses  Analysis[]
+  goals     Goal[]
+  badges    Badge[]
+}
+
+model Analysis {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodType          String
+  totalMinutes        Int
+  apps                Json
+  topCategories       Json
+  recommendations     Json
+  detoxScore          Int
+  coreProblems        Json
+  psychologicalCauses Json
+  detoxStrategies     Json
+  dailyRoutine        Json
+  timePatterns        Json
+  isPremium           Boolean  @default(false)
+  sourceAnalysisIds   Json?
+  createdAt           DateTime @default(now())
+}
+
+model Goal {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  targetMinutes Int
+  startDate     DateTime
+  endDate       DateTime
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
+}
+
+model Badge {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name     String
+  earnedAt DateTime @default(now())
+  shared   Boolean  @default(false)
+}
