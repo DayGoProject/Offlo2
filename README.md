@@ -132,7 +132,7 @@ firebase deploy --only functions
 | 1단계 | 프로젝트 초기 세팅 · 기본 UI 구축 | ✅ 완료 |
 | 2단계 | 인증 시스템 구현 (Firebase Auth, Google OAuth) | ✅ 완료 |
 | 3단계 | AI 스크린타임 분석 (Gemini Vision API) | ✅ 완료 |
-| 4단계 | PostgreSQL 구축 (Supabase 프로젝트 생성 · Prisma 스키마 설계) | 🔲 예정 |
+| 4단계 | PostgreSQL 구축 (Supabase 프로젝트 생성 · Prisma 스키마 설계) | ✅ 완료 |
 | 5단계 | Next.js API Routes 구현 (users · analyses · goals · badges CRUD) | 🔲 예정 |
 | 6단계 | Firestore analyses → Supabase 이전 · 프론트엔드 연결 전환 | 🔲 예정 |
 | 7단계 | Chrome 확장 프로그램 개발 (Manifest V3) | 🔲 예정 |
