@@ -46,6 +46,35 @@ export interface ChatMessage {
   imagePath?: string;
 }
 
+/* ── 보안 유틸 ──────────────────────────────────────────────── */
+
+/** storagePath가 uid 소유의 허용된 경로인지 검증 */
+function assertStoragePath(storagePath: unknown, uid: string): asserts storagePath is string {
+  if (!storagePath || typeof storagePath !== "string")
+    throw new HttpsError("invalid-argument", "storagePath가 필요합니다.");
+  // 허용 경로: users/{uid}/screenshots/{file} 또는 users/{uid}/chat-images/{file}
+  const validPattern = /^users\/[^/]+\/(screenshots|chat-images)\/[^/]+$/;
+  if (!storagePath.startsWith(`users/${uid}/`) || !validPattern.test(storagePath))
+    throw new HttpsError("permission-denied", "접근 권한이 없습니다.");
+}
+
+/** Gemini 응답 JSON의 필수 필드를 검증 */
+function validateAnalysisResult(data: unknown): asserts data is AnalysisResult {
+  if (!data || typeof data !== "object")
+    throw new Error("분석 결과 형식이 올바르지 않습니다.");
+  const d = data as Record<string, unknown>;
+  if (typeof d.totalMinutes !== "number" || d.totalMinutes < 0 || d.totalMinutes > 1440)
+    throw new Error("totalMinutes 값이 유효하지 않습니다.");
+  if (typeof d.detoxScore !== "number" || d.detoxScore < 0 || d.detoxScore > 100)
+    throw new Error("detoxScore 값이 유효하지 않습니다.");
+  if (!Array.isArray(d.apps) || d.apps.length > 50)
+    throw new Error("apps 필드가 유효하지 않습니다.");
+  if (!Array.isArray(d.recommendations))
+    throw new Error("recommendations 필드가 유효하지 않습니다.");
+  if (!Array.isArray(d.topCategories))
+    throw new Error("topCategories 필드가 유효하지 않습니다.");
+}
+
 /* ── 일간 분석 프롬프트 (이미지 → JSON) ────────────────────── */
 
 const DAILY_ANALYSIS_PROMPT = `당신은 디지털 웰빙 전문 AI 코치입니다.
@@ -240,12 +269,8 @@ export const analyzeScreenTime = onCall(
     if (!request.auth) throw new HttpsError("unauthenticated", "로그인이 필요합니다.");
 
     const uid = request.auth.uid;
-    const { storagePath } = request.data as { storagePath: string };
-
-    if (!storagePath || typeof storagePath !== "string")
-      throw new HttpsError("invalid-argument", "storagePath가 필요합니다.");
-    if (!storagePath.startsWith(`users/${uid}/`))
-      throw new HttpsError("permission-denied", "접근 권한이 없습니다.");
+    const { storagePath } = request.data as { storagePath: unknown };
+    assertStoragePath(storagePath, uid);
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) throw new HttpsError("internal", "서버 설정 오류가 발생했습니다.");
@@ -298,9 +323,9 @@ export const analyzeScreenTime = onCall(
     try {
       const parsed = JSON.parse(jsonStr);
       if (parsed.error) throw new HttpsError("invalid-argument", parsed.error);
-      // 항상 daily로 강제
       parsed.periodType = "daily";
-      analysisData = parsed as AnalysisResult;
+      validateAnalysisResult(parsed);
+      analysisData = parsed;
     } catch (e) {
       if (e instanceof HttpsError) throw e;
       throw new HttpsError("internal", "분석 결과를 처리하는 중 오류가 발생했습니다.");
@@ -317,7 +342,7 @@ export const analyzeScreenTime = onCall(
         isPremium,
       });
 
-    await file.delete().catch(() => {});
+    await file.delete().catch((e) => console.error(`스토리지 파일 삭제 실패: ${storagePath}`, e));
     return { analysisId: analysisRef.id };
   }
 );
@@ -401,7 +426,8 @@ export const generateWeeklyAnalysis = onCall(
       const parsed = JSON.parse(jsonStr);
       if (parsed.error) throw new HttpsError("invalid-argument", parsed.error);
       parsed.periodType = "weekly";
-      weeklyData = parsed as AnalysisResult;
+      validateAnalysisResult(parsed);
+      weeklyData = parsed;
     } catch (e) {
       if (e instanceof HttpsError) throw e;
       throw new HttpsError("internal", "주간 분석 결과를 처리하는 중 오류가 발생했습니다.");
@@ -436,8 +462,18 @@ export const chatWithAnalysis = onCall(
       messages: ChatMessage[];
     };
 
-    if (!analysisId || !Array.isArray(messages))
-      throw new HttpsError("invalid-argument", "analysisId와 messages가 필요합니다.");
+    if (!analysisId || typeof analysisId !== "string" || analysisId.length > 128)
+      throw new HttpsError("invalid-argument", "analysisId가 유효하지 않습니다.");
+    if (!Array.isArray(messages))
+      throw new HttpsError("invalid-argument", "messages가 필요합니다.");
+    if (messages.length > 50)
+      throw new HttpsError("invalid-argument", "메시지 수가 너무 많습니다. (최대 50개)");
+    for (const msg of messages) {
+      if (msg.role !== "user" && msg.role !== "model")
+        throw new HttpsError("invalid-argument", "잘못된 메시지 역할입니다.");
+      if (typeof msg.text !== "string" || msg.text.length > 2000)
+        throw new HttpsError("invalid-argument", "메시지 내용이 너무 깁니다. (최대 2000자)");
+    }
 
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) throw new HttpsError("internal", "서버 설정 오류가 발생했습니다.");
@@ -477,8 +513,7 @@ export const chatWithAnalysis = onCall(
       [{ text: lastMessage.text }];
 
     if (lastMessage.imagePath) {
-      if (!lastMessage.imagePath.startsWith(`users/${uid}/`))
-        throw new HttpsError("permission-denied", "접근 권한이 없습니다.");
+      assertStoragePath(lastMessage.imagePath, uid);
 
       const bucket = admin.storage().bucket();
       const chatFile = bucket.file(lastMessage.imagePath);
@@ -488,7 +523,9 @@ export const chatWithAnalysis = onCall(
         const imgMime = (imgMeta.contentType as string) || "image/jpeg";
         const [imgBuffer] = await chatFile.download();
         userParts.push({ inlineData: { mimeType: imgMime, data: imgBuffer.toString("base64") } });
-        await chatFile.delete().catch(() => {});
+        await chatFile.delete().catch((e) =>
+          console.error(`채팅 이미지 삭제 실패: ${lastMessage.imagePath}`, e)
+        );
       }
     }
 

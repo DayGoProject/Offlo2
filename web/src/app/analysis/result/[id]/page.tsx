@@ -5,8 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { doc, getDoc } from "firebase/firestore";
 import { ref as storageRef, uploadBytes } from "firebase/storage";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { getApp } from "firebase/app";
+import { chatWithAnalysis } from "@/services/cloudFunctions";
 import { useAuth } from "@/hooks/useAuth";
 import { db, storage } from "@/services/firebase";
 import Navbar from "@/components/Navbar";
@@ -138,15 +137,9 @@ function AnalysisChat({ analysisId, initialQuestion }: { analysisId: string; ini
     setSending(true);
 
     try {
-      const functions = getFunctions(getApp(), "asia-northeast3");
-      const chatFn = httpsCallable<
-        { analysisId: string; messages: Omit<ChatMessage, "imagePreview">[] },
-        { reply: string }
-      >(functions, "chatWithAnalysis");
-
       // imagePreview는 UI 전용이므로 서버에 보내지 않음
       const payload = updatedMessages.map(({ imagePreview: _preview, ...rest }) => rest);
-      const result = await chatFn({ analysisId, messages: payload });
+      const result = await chatWithAnalysis({ analysisId, messages: payload });
 
       setMessages((prev) => [...prev, { role: "model", text: result.data.reply }]);
     } catch (err: unknown) {

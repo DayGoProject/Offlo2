@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ref, uploadBytes } from "firebase/storage";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { getApp } from "firebase/app";
+import { analyzeScreenTime, generateWeeklyAnalysis } from "@/services/cloudFunctions";
 import { collection, query, where, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import { storage, db } from "@/services/firebase";
@@ -136,10 +135,6 @@ export default function AnalysisPage() {
       await uploadBytes(fileRef, file, { contentType: file.type });
 
       setStatus("analyzing");
-      const functions = getFunctions(getApp(), "asia-northeast3");
-      const analyzeScreenTime = httpsCallable<{ storagePath: string }, { analysisId: string }>(
-        functions, "analyzeScreenTime"
-      );
       const result = await analyzeScreenTime({ storagePath });
 
       setStatus("done");
@@ -159,10 +154,6 @@ export default function AnalysisPage() {
     setWeeklyError(null);
     setWeeklyStatus("generating");
     try {
-      const functions = getFunctions(getApp(), "asia-northeast3");
-      const generateWeeklyAnalysis = httpsCallable<Record<string, never>, { analysisId: string }>(
-        functions, "generateWeeklyAnalysis"
-      );
       const result = await generateWeeklyAnalysis({});
       router.push(`/analysis/result/${result.data.analysisId}`);
     } catch (err: unknown) {
