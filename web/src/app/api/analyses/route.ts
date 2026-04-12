@@ -30,7 +30,7 @@ export async function GET(req: Request): Promise<Response> {
         detoxScore: true,
         isPremium: true,
         createdAt: true,
-        // 목록에서는 무거운 JSON 필드 제외
+        apps: true, // 주간 분석 프롬프트 빌드에 필요
       },
     });
 
@@ -60,27 +60,39 @@ export async function POST(req: Request): Promise<Response> {
 
     validateAnalysisBody(body);
 
-    const {
-      periodType, totalMinutes, apps, topCategories, recommendations,
-      detoxScore, coreProblems, psychologicalCauses, detoxStrategies,
-      dailyRoutine, timePatterns, sourceAnalysisIds,
-    } = body;
+    // validateAnalysisBody가 형식을 보장하므로 안전하게 캐스팅
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const d = body as any;
+
+    // 일간 분석 중복 방지 (KST 기준 하루 1회)
+    if (d.periodType === "daily") {
+      const KST_OFFSET = 9 * 60 * 60 * 1000;
+      const kstNow = new Date(Date.now() + KST_OFFSET);
+      kstNow.setUTCHours(0, 0, 0, 0);
+      const todayStartUTC = new Date(kstNow.getTime() - KST_OFFSET);
+
+      const existing = await prisma.analysis.findFirst({
+        where: { userId: user.id, periodType: "daily", createdAt: { gte: todayStartUTC } },
+        select: { id: true },
+      });
+      if (existing) throw apiError("오늘은 이미 일간 분석을 완료했습니다. 일간 분석은 하루에 한 번만 가능합니다.", 409);
+    }
 
     const analysis = await prisma.analysis.create({
       data: {
         userId: user.id,
-        periodType,
-        totalMinutes,
-        apps,
-        topCategories,
-        recommendations,
-        detoxScore,
-        coreProblems,
-        psychologicalCauses,
-        detoxStrategies,
-        dailyRoutine,
-        timePatterns,
-        sourceAnalysisIds: sourceAnalysisIds ?? null,
+        periodType: d.periodType,
+        totalMinutes: d.totalMinutes,
+        apps: d.apps,
+        topCategories: d.topCategories,
+        recommendations: d.recommendations,
+        detoxScore: d.detoxScore,
+        coreProblems: d.coreProblems,
+        psychologicalCauses: d.psychologicalCauses,
+        detoxStrategies: d.detoxStrategies,
+        dailyRoutine: d.dailyRoutine,
+        timePatterns: d.timePatterns,
+        sourceAnalysisIds: d.sourceAnalysisIds ?? null,
         isPremium,
       },
     });
