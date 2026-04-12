@@ -136,23 +136,6 @@ function Hero({ ctaHref }: { ctaHref: string }) {
               작동 방식 보기
             </Link>
           </motion.div>
-
-          {/* 통계 */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4} className="flex items-center gap-7">
-            {[
-              { val: "4.2h", label: "일평균 절약 시간" },
-              { val: "98%", label: "AI 분석 정확도" },
-              { val: "무료", label: "기본 플랜" },
-            ].map((stat, i) => (
-              <div key={stat.label} className="flex items-center gap-7">
-                {i > 0 && <div className="w-px h-8" style={{ background: "var(--border-card)" }} />}
-                <div className="flex flex-col gap-1">
-                  <span className="font-extrabold text-brand" style={{ fontSize: "24px", letterSpacing: "-0.02em" }}>{stat.val}</span>
-                  <span className="text-[11px]" style={{ color: "var(--text-faint)" }}>{stat.label}</span>
-                </div>
-              </div>
-            ))}
-          </motion.div>
         </div>
 
         {/* 오른쪽: 앱 프리뷰 카드 */}

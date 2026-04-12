@@ -4,27 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ref, uploadBytes } from "firebase/storage";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { getApp } from "firebase/app";
-import { collection, query, where, orderBy, limit, getDocs, Timestamp } from "firebase/firestore";
+import { analyzeScreenTime, generateWeeklyAnalysis, AnalysisResult, DailySummary } from "@/services/cloudFunctions";
 import { useAuth } from "@/hooks/useAuth";
-import { storage, db } from "@/services/firebase";
+import { storage } from "@/services/firebase";
 import Navbar from "@/components/Navbar";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif", "image/webp"];
 const MAX_SIZE_MB = 10;
 const WEEKLY_THRESHOLD = 7; // 주간 분석에 필요한 일간 분석 수
-
-/** 현재 달력 주의 시작(이번 주 월요일 00:00:00)을 반환 */
-function getWeekStart(): Date {
-  const now = new Date();
-  const day = now.getDay(); // 0=일, 1=월 … 6=토
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  monday.setHours(0, 0, 0, 0);
-  return monday;
-}
 
 /** 두 Date가 같은 날(로컬 기준)인지 확인 */
 function isSameDay(a: Date, b: Date): boolean {
@@ -40,6 +27,7 @@ interface DailyRecord {
   detoxScore: number;
   totalMinutes: number;
   createdAt: Date;
+  apps: { appName: string; minutes: number; category: string }[];
 }
 
 export default function AnalysisPage() {
@@ -50,7 +38,7 @@ export default function AnalysisPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [status, setStatus] = useState<"idle" | "uploading" | "analyzing" | "done">("idle");
+  const [status, setStatus] = useState<"idle" | "uploading" | "analyzing" | "saving" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -65,37 +53,55 @@ export default function AnalysisPage() {
     if (!loading && !user) router.replace("/login");
   }, [user, loading, router]);
 
-  // 일간 분석 기록 로드
+  // 일간 분석 기록 로드 (이번 주 분석 현황용)
   useEffect(() => {
     if (!user) return;
     async function loadRecords() {
       try {
-        const weekStart = Timestamp.fromDate(getWeekStart());
-        const q = query(
-          collection(db, "users", user!.uid, "analyses"),
-          where("periodType", "==", "daily"),
-          where("createdAt", ">=", weekStart),
-          orderBy("createdAt", "desc"),
-          limit(WEEKLY_THRESHOLD)
+        const token = await user!.getIdToken();
+
+        // 이번 주 월요일 00:00 KST 계산
+        const KST_OFFSET = 9 * 60 * 60 * 1000;
+        const kstNow = new Date(Date.now() + KST_OFFSET);
+        const dayOfWeek = kstNow.getUTCDay();
+        const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const kstMonday = new Date(kstNow);
+        kstMonday.setUTCDate(kstNow.getUTCDate() + daysToMonday);
+        kstMonday.setUTCHours(0, 0, 0, 0);
+
+        const res = await fetch(
+          `/api/analyses?periodType=daily&limit=${WEEKLY_THRESHOLD}`,
+          { headers: { Authorization: `Bearer ${token}` } }
         );
-        const snap = await getDocs(q);
-        const records: DailyRecord[] = snap.docs.map((doc) => {
-          const data = doc.data();
-          const ts = data.createdAt as Timestamp | null;
-          return {
-            id: doc.id,
-            detoxScore: data.detoxScore as number ?? 0,
-            totalMinutes: data.totalMinutes as number ?? 0,
-            createdAt: ts ? ts.toDate() : new Date(),
-          };
-        });
+        if (!res.ok) return;
+
+        const json = await res.json();
+        const raw: Array<{
+          id: string;
+          detoxScore: number;
+          totalMinutes: number;
+          createdAt: string;
+          apps: { appName: string; minutes: number; category: string }[];
+        }> = json.analyses ?? [];
+
+        // 이번 주 월요일 이후 데이터만 필터
+        const weekStartUTC = kstMonday.getTime() - KST_OFFSET;
+        const records: DailyRecord[] = raw
+          .filter((a) => new Date(a.createdAt).getTime() >= weekStartUTC)
+          .map((a) => ({
+            id: a.id,
+            detoxScore: a.detoxScore,
+            totalMinutes: a.totalMinutes,
+            createdAt: new Date(a.createdAt),
+            apps: a.apps ?? [],
+          }));
+
         setDailyRecords(records);
-        // 가장 최근 기록이 오늘이면 오늘 업로드 완료로 표시
         if (records.length > 0 && isSameDay(records[0].createdAt, new Date())) {
           setHasUploadedToday(true);
         }
       } catch {
-        // 인덱스 미생성 등의 오류는 무시 (기능 저하 허용)
+        // 기록 로드 실패는 기능 저하 허용
       } finally {
         setRecordsLoading(false);
       }
@@ -136,14 +142,28 @@ export default function AnalysisPage() {
       await uploadBytes(fileRef, file, { contentType: file.type });
 
       setStatus("analyzing");
-      const functions = getFunctions(getApp(), "asia-northeast3");
-      const analyzeScreenTime = httpsCallable<{ storagePath: string }, { analysisId: string }>(
-        functions, "analyzeScreenTime"
-      );
-      const result = await analyzeScreenTime({ storagePath });
+      const cfResult = await analyzeScreenTime({ storagePath });
+      const analysisData: AnalysisResult = cfResult.data.analysisData;
 
+      setStatus("saving");
+      const token = await user.getIdToken();
+      const saveRes = await fetch("/api/analyses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(analysisData),
+      });
+
+      if (!saveRes.ok) {
+        const err = await saveRes.json().catch(() => ({}));
+        throw new Error(err.error ?? "분석 결과 저장에 실패했습니다.");
+      }
+
+      const { analysisId } = await saveRes.json();
       setStatus("done");
-      router.push(`/analysis/result/${result.data.analysisId}`);
+      router.push(`/analysis/result/${analysisId}`);
     } catch (err: unknown) {
       setStatus("idle");
       setError(
@@ -159,12 +179,70 @@ export default function AnalysisPage() {
     setWeeklyError(null);
     setWeeklyStatus("generating");
     try {
-      const functions = getFunctions(getApp(), "asia-northeast3");
-      const generateWeeklyAnalysis = httpsCallable<Record<string, never>, { analysisId: string }>(
-        functions, "generateWeeklyAnalysis"
+      const token = await user.getIdToken();
+
+      // 이번 주 일간 분석 전체 데이터 조회 (apps 포함)
+      const res = await fetch(
+        `/api/analyses?periodType=daily&limit=${WEEKLY_THRESHOLD}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      const result = await generateWeeklyAnalysis({});
-      router.push(`/analysis/result/${result.data.analysisId}`);
+      if (!res.ok) throw new Error("기록을 불러오는 중 오류가 발생했습니다.");
+      const json = await res.json();
+
+      const raw: Array<{
+        id: string;
+        detoxScore: number;
+        totalMinutes: number;
+        createdAt: string;
+        apps: { appName: string; minutes: number; category: string }[];
+      }> = json.analyses ?? [];
+
+      // 이번 주 월요일 이후만
+      const KST_OFFSET = 9 * 60 * 60 * 1000;
+      const kstNow = new Date(Date.now() + KST_OFFSET);
+      const dayOfWeek = kstNow.getUTCDay();
+      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const kstMonday = new Date(kstNow);
+      kstMonday.setUTCDate(kstNow.getUTCDate() + daysToMonday);
+      kstMonday.setUTCHours(0, 0, 0, 0);
+      const weekStartUTC = kstMonday.getTime() - KST_OFFSET;
+
+      const weekRecords = raw.filter((a) => new Date(a.createdAt).getTime() >= weekStartUTC);
+
+      if (weekRecords.length < WEEKLY_THRESHOLD) {
+        throw new Error(`이번 주 일간 분석이 ${weekRecords.length}개 있습니다. 7개가 모여야 주간 분석을 시작할 수 있습니다.`);
+      }
+
+      const sourceAnalysisIds = weekRecords.map((r) => r.id);
+
+      const dailySummaries: DailySummary[] = weekRecords.reverse().map((r) => ({
+        date: new Date(r.createdAt).toLocaleDateString("ko-KR", {
+          month: "long", day: "numeric", weekday: "short",
+        }),
+        totalMinutes: r.totalMinutes,
+        apps: r.apps,
+        detoxScore: r.detoxScore,
+      }));
+
+      const cfResult = await generateWeeklyAnalysis({ dailySummaries });
+      const analysisData: AnalysisResult = cfResult.data.analysisData;
+
+      const saveRes = await fetch("/api/analyses", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ ...analysisData, sourceAnalysisIds }),
+      });
+
+      if (!saveRes.ok) {
+        const err = await saveRes.json().catch(() => ({}));
+        throw new Error(err.error ?? "주간 분석 결과 저장에 실패했습니다.");
+      }
+
+      const { analysisId } = await saveRes.json();
+      router.push(`/analysis/result/${analysisId}`);
     } catch (err: unknown) {
       setWeeklyStatus("idle");
       setWeeklyError(
@@ -183,7 +261,7 @@ export default function AnalysisPage() {
     setStatus("idle");
   }
 
-  const isLoading = status === "uploading" || status === "analyzing";
+  const isLoading = status === "uploading" || status === "analyzing" || status === "saving";
   const canWeekly = dailyRecords.length >= WEEKLY_THRESHOLD;
   const needed = WEEKLY_THRESHOLD - dailyRecords.length;
 
@@ -302,7 +380,11 @@ export default function AnalysisPage() {
                       <div className="w-12 h-12 rounded-full border-[3px] border-t-[#3DDB87] animate-spin"
                         style={{ borderColor: "rgba(61,219,135,0.2)", borderTopColor: "#3DDB87" }} />
                       <p className="text-lg font-semibold text-[var(--text-primary)]">
-                        {status === "uploading" ? "이미지 업로드 중..." : "AI가 분석하고 있습니다..."}
+                        {status === "uploading"
+                          ? "이미지 업로드 중..."
+                          : status === "saving"
+                          ? "결과 저장 중..."
+                          : "AI가 분석하고 있습니다..."}
                       </p>
                       <p className="text-sm" style={{ color: "var(--text-muted)" }}>잠시만 기다려주세요 (10~20초)</p>
                     </div>
@@ -399,11 +481,11 @@ export default function AnalysisPage() {
                   {/* 점수 도트 */}
                   <div className="flex items-center gap-1.5 mb-5">
                     {Array.from({ length: WEEKLY_THRESHOLD }).map((_, i) => {
-                      const rec = dailyRecords[dailyRecords.length - 1 - (WEEKLY_THRESHOLD - 1 - i)];
                       const hasRecord = i < dailyRecords.length;
                       const score = hasRecord ? dailyRecords[dailyRecords.length - 1 - i]?.detoxScore ?? 0 : 0;
                       const barColor = score >= 70 ? "#3DDB87" : score >= 40 ? "#facc15" : "#f87171";
                       const days = ["월", "화", "수", "목", "금", "토", "일"];
+                      const rec = hasRecord ? dailyRecords[dailyRecords.length - 1 - i] : null;
                       return (
                         <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
                           <div
@@ -412,7 +494,7 @@ export default function AnalysisPage() {
                               background: hasRecord ? barColor : "var(--bg-bar)",
                               color: hasRecord ? "#0A0A0F" : "var(--text-ghost)",
                             }}
-                            title={hasRecord ? `${rec?.createdAt?.toLocaleDateString("ko-KR")} · ${score}점` : "미기록"}
+                            title={hasRecord && rec ? `${rec.createdAt.toLocaleDateString("ko-KR")} · ${score}점` : "미기록"}
                           >
                             {hasRecord ? score : ""}
                           </div>

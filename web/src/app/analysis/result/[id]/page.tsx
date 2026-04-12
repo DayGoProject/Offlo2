@@ -3,12 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { doc, getDoc } from "firebase/firestore";
 import { ref as storageRef, uploadBytes } from "firebase/storage";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { getApp } from "firebase/app";
+import { chatWithAnalysis, AnalysisContext } from "@/services/cloudFunctions";
 import { useAuth } from "@/hooks/useAuth";
-import { db, storage } from "@/services/firebase";
+import { storage } from "@/services/firebase";
 import Navbar from "@/components/Navbar";
 
 /* ── 타입 ── */
@@ -17,6 +15,7 @@ interface TimePattern { timeSlot: string; apps: string[]; question: string; }
 interface DailyRoutine { morning: string; afternoon: string; evening: string; }
 
 interface Analysis {
+  id: string;
   totalMinutes: number;
   periodType?: "daily" | "weekly";
   apps: AppUsage[];
@@ -24,8 +23,7 @@ interface Analysis {
   recommendations: string[];
   detoxScore: number;
   isPremium: boolean;
-  createdAt: { seconds: number } | null;
-  // 상세 분석 필드 (선택적 — 이전 분석과 호환)
+  createdAt: string; // ISO 문자열 (Supabase)
   coreProblems?: string[];
   psychologicalCauses?: string[];
   detoxStrategies?: string[];
@@ -37,7 +35,7 @@ interface ChatMessage {
   role: "user" | "model";
   text: string;
   imagePath?: string;
-  imagePreview?: string;  // 로컬 프리뷰용 (UI only)
+  imagePreview?: string; // 로컬 프리뷰용 (UI only)
 }
 
 /* ── 유틸 ── */
@@ -70,7 +68,15 @@ function ScoreCircle({ score }: { score: number }) {
 }
 
 /* ── 채팅 컴포넌트 ── */
-function AnalysisChat({ analysisId, initialQuestion }: { analysisId: string; initialQuestion?: string }) {
+function AnalysisChat({
+  analysisId,
+  analysisContext,
+  initialQuestion,
+}: {
+  analysisId: string;
+  analysisContext: AnalysisContext;
+  initialQuestion?: string;
+}) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>(
     initialQuestion
@@ -138,15 +144,9 @@ function AnalysisChat({ analysisId, initialQuestion }: { analysisId: string; ini
     setSending(true);
 
     try {
-      const functions = getFunctions(getApp(), "asia-northeast3");
-      const chatFn = httpsCallable<
-        { analysisId: string; messages: Omit<ChatMessage, "imagePreview">[] },
-        { reply: string }
-      >(functions, "chatWithAnalysis");
-
       // imagePreview는 UI 전용이므로 서버에 보내지 않음
       const payload = updatedMessages.map(({ imagePreview: _preview, ...rest }) => rest);
-      const result = await chatFn({ analysisId, messages: payload });
+      const result = await chatWithAnalysis({ analysisId, messages: payload, analysisContext });
 
       setMessages((prev) => [...prev, { role: "model", text: result.data.reply }]);
     } catch (err: unknown) {
@@ -308,13 +308,19 @@ export default function ResultPage() {
     if (!user || !id) return;
     async function fetchAnalysis() {
       try {
-        const docRef = doc(db, "users", user!.uid, "analyses", id);
-        const snap = await getDoc(docRef);
-        if (!snap.exists()) {
-          setError("분석 결과를 찾을 수 없습니다.");
-        } else {
-          setAnalysis(snap.data() as Analysis);
+        const token = await user!.getIdToken();
+        const res = await fetch(`/api/analyses/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}));
+          setError(json.error ?? "분석 결과를 찾을 수 없습니다.");
+          return;
         }
+
+        const json = await res.json();
+        setAnalysis(json.analysis as Analysis);
       } catch {
         setError("데이터를 불러오는 중 오류가 발생했습니다.");
       } finally {
@@ -357,6 +363,15 @@ export default function ResultPage() {
 
   // 채팅 초기 질문: timePatterns[0]의 question 사용
   const initialChatQuestion = analysis.timePatterns?.[0]?.question;
+
+  // 채팅에 전달할 분석 컨텍스트
+  const analysisContext: AnalysisContext = {
+    periodType: analysis.periodType ?? "daily",
+    totalMinutes: analysis.totalMinutes,
+    apps: analysis.apps,
+    detoxScore: analysis.detoxScore,
+    coreProblems: analysis.coreProblems ?? [],
+  };
 
   return (
     <>
@@ -468,7 +483,11 @@ export default function ResultPage() {
               </div>
 
               {/* AI 채팅 */}
-              <AnalysisChat analysisId={id} initialQuestion={initialChatQuestion} />
+              <AnalysisChat
+                analysisId={id}
+                analysisContext={analysisContext}
+                initialQuestion={initialChatQuestion}
+              />
             </div>
 
             {/* ── RIGHT: 인사이트 ── */}
