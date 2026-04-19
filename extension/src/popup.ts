@@ -1,146 +1,239 @@
-/* ── 타입 ───────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   Offlo 확장 프로그램 — Popup UI
+   ═══════════════════════════════════════════════════════════ */
 
-interface DayData {
-  date: string;
-  domains: Record<string, number>; // domain → seconds
+/* ── 타입 ────────────────────────────────────────────────── */
+
+interface Session {
+  active: boolean;
+  startTime: number;
+  endTime: number;
+  durationMs: number;
 }
 
-/* ── 도메인 → 앱 이름 매핑 ──────────────────────────────── */
+interface State {
+  loggedIn: boolean;
+  session: Session | null;
+  blockedDomains: string[];
+  todaySeconds: number;
+}
 
-const DOMAIN_NAMES: Record<string, string> = {
-  'www.youtube.com': '유튜브',
-  'youtube.com': '유튜브',
-  'www.instagram.com': '인스타그램',
-  'instagram.com': '인스타그램',
-  'twitter.com': '트위터',
-  'x.com': '트위터(X)',
-  'www.facebook.com': '페이스북',
-  'facebook.com': '페이스북',
-  'www.tiktok.com': '틱톡',
-  'tiktok.com': '틱톡',
-  'www.netflix.com': '넷플릭스',
-  'netflix.com': '넷플릭스',
-  'www.naver.com': '네이버',
-  'naver.com': '네이버',
-  'www.kakao.com': '카카오',
-  'www.reddit.com': '레딧',
-  'www.twitch.tv': '트위치',
-  'twitch.tv': '트위치',
-};
+/* ── 유틸 ────────────────────────────────────────────────── */
 
-/* ── 유틸 ───────────────────────────────────────────────── */
-
-function formatTime(seconds: number): string {
+function formatDetoxTime(seconds: number): string {
+  if (seconds <= 0) return '0분';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}시간 ${m}분`;
-  if (m > 0) return `${m}분`;
-  return '1분 미만';
+  if (h > 0 && m > 0) return `${h}시간 ${m}분`;
+  if (h > 0) return `${h}시간`;
+  return `${m}분`;
 }
 
-function displayName(domain: string): string {
-  return DOMAIN_NAMES[domain] ?? domain.replace(/^www\./, '');
+function formatCountdown(remainingMs: number): string {
+  if (remainingMs <= 0) return '00:00:00';
+  const t = Math.floor(remainingMs / 1000);
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const s = t % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-/* ── 인증 체크 ───────────────────────────────────────────── */
-
-async function checkAuth(): Promise<{ idToken: string | null; expired: boolean }> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(['idToken', 'expiresAt'], (result) => {
-      const { idToken, expiresAt } = result as { idToken?: string; expiresAt?: number };
-      if (!idToken) return resolve({ idToken: null, expired: false });
-      if (expiresAt && Date.now() > expiresAt) return resolve({ idToken: null, expired: true });
-      resolve({ idToken, expired: false });
-    });
+async function getState(): Promise<State> {
+  return new Promise(resolve => {
+    chrome.runtime.sendMessage({ type: 'GET_STATE' }, resolve);
   });
 }
 
-async function getTodayData(): Promise<DayData> {
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type: 'GET_TODAY_DATA' }, (response) => {
-      const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      resolve(response?.data ?? { date: today, domains: {} });
-    });
-  });
+/* ── 카운트다운 타이머 ───────────────────────────────────── */
+
+let timerInterval: ReturnType<typeof setInterval> | null = null;
+
+function clearTimer() {
+  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+}
+
+function startCountdown(session: Session) {
+  clearTimer();
+  timerInterval = setInterval(() => {
+    const el = document.getElementById('countdown');
+    if (!el) { clearTimer(); return; }
+    const remaining = session.endTime - Date.now();
+    if (remaining <= 0) { clearTimer(); init(); return; }
+    el.textContent = formatCountdown(remaining);
+  }, 1000);
 }
 
 /* ── 렌더: 로그인 화면 ──────────────────────────────────── */
 
-function renderLogin(expired: boolean): void {
+function renderLogin() {
+  clearTimer();
   document.getElementById('app')!.innerHTML = `
     <div class="header">
       <span class="logo">Offlo</span>
     </div>
     <div class="login-section">
-      ${expired ? '<p class="error-msg">로그인이 만료되었습니다.</p>' : ''}
-      <p class="desc">Offlo 계정으로 로그인하면<br>웹 사용 시간이 자동으로 기록됩니다.</p>
+      <p class="login-desc">
+        Offlo 계정으로 로그인하면<br>
+        사이트를 차단하고 디톡스 시간을<br>
+        반려 식물에 적립할 수 있어요.
+      </p>
       <button id="loginBtn" class="btn-primary">Google로 로그인</button>
     </div>
   `;
-
   document.getElementById('loginBtn')!.addEventListener('click', () => {
-    const extensionId = chrome.runtime.id;
-    const url = `https://offlo--offlo2-app.asia-east1.hosted.app/extension-auth?extensionId=${extensionId}`;
+    const url = `https://offlo--offlo2-app.asia-east1.hosted.app/extension-auth?extensionId=${chrome.runtime.id}`;
     chrome.tabs.create({ url });
     window.close();
   });
 }
 
-/* ── 렌더: 대시보드 ─────────────────────────────────────── */
+/* ── 렌더: 메인 화면 ────────────────────────────────────── */
 
-function renderDashboard(data: DayData): void {
-  const entries = Object.entries(data.domains)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5);
+function renderMain(state: State) {
+  clearTimer();
+  const { blockedDomains, session, todaySeconds } = state;
 
-  const totalSeconds = Object.values(data.domains).reduce((a, b) => a + b, 0);
+  /* 차단 사이트 목록 */
+  const domainRows = blockedDomains.length > 0
+    ? blockedDomains.map(d => `
+        <div class="domain-item">
+          <span class="domain-text">${d}</span>
+          <button class="btn-remove" data-domain="${d}" title="삭제">×</button>
+        </div>`).join('')
+    : `<p class="empty-msg">차단할 사이트를 추가해주세요.</p>`;
 
-  const rows = entries.length > 0
-    ? entries.map(([domain, seconds]) => {
-        const pct = totalSeconds > 0 ? Math.round((seconds / totalSeconds) * 100) : 0;
-        return `
-          <div class="domain-row">
-            <span class="domain-name">${displayName(domain)}</span>
-            <div class="bar-wrap">
-              <div class="bar" style="width:${Math.max(pct, 2)}%"></div>
-            </div>
-            <span class="domain-time">${formatTime(seconds)}</span>
-          </div>`;
-      }).join('')
-    : '<p class="no-data">아직 기록된 데이터가 없습니다.</p>';
+  /* 세션 영역 */
+  const sessionHtml = session?.active
+    ? `<div class="session-active">
+        <div class="pulse-dot"></div>
+        <div class="session-info">
+          <span class="session-title">디톡스 진행 중</span>
+          <span id="countdown" class="countdown">${formatCountdown(session.endTime - Date.now())}</span>
+        </div>
+        <button id="stopBtn" class="btn-stop">중단</button>
+      </div>`
+    : `<div class="session-idle">
+        <p class="session-guide">차단 시간을 선택하세요</p>
+        <div class="duration-grid">
+          <button class="btn-dur" data-ms="${30 * 60 * 1000}">30분</button>
+          <button class="btn-dur" data-ms="${60 * 60 * 1000}">1시간</button>
+          <button class="btn-dur" data-ms="${90 * 60 * 1000}">1시간 30분</button>
+          <button class="btn-dur" data-ms="${120 * 60 * 1000}">2시간</button>
+        </div>
+        <div class="custom-row">
+          <input id="customMin" type="number" min="1" max="480" placeholder="직접 입력 (분)" class="input-custom" />
+          <button id="startCustomBtn" class="btn-primary-sm">시작</button>
+        </div>
+      </div>`;
 
   document.getElementById('app')!.innerHTML = `
     <div class="header">
       <span class="logo">Offlo</span>
       <button id="logoutBtn" class="btn-ghost">로그아웃</button>
     </div>
-    <div class="total-card">
-      <span class="total-label">오늘 총 사용 시간</span>
-      <span class="total-time">${formatTime(totalSeconds)}</span>
+
+    <section class="section">
+      <div class="section-title">차단 사이트</div>
+      <div id="domainList" class="domain-list">${domainRows}</div>
+      <div class="add-row">
+        <input id="domainInput" type="text" placeholder="youtube.com" class="input-domain" />
+        <button id="addBtn" class="btn-add">추가</button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">디톡스 세션</div>
+      ${sessionHtml}
+    </section>
+
+    <div class="today-bar">
+      <span class="today-label">오늘 적립한 디톡스</span>
+      <span class="today-value">${formatDetoxTime(todaySeconds)}</span>
     </div>
-    <div class="domains-section">${rows}</div>
-    <a id="analysisLink" class="btn-primary">분석하러 가기 →</a>
   `;
 
-  document.getElementById('logoutBtn')!.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ type: 'LOGOUT' }, () => renderLogin(false));
+  /* ── 이벤트 바인딩 ── */
+
+  // 도메인 삭제
+  document.getElementById('domainList')!.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('.btn-remove');
+    if (!btn) return;
+    chrome.runtime.sendMessage({ type: 'REMOVE_DOMAIN', domain: btn.dataset.domain }, () => init());
   });
 
-  document.getElementById('analysisLink')!.addEventListener('click', () => {
-    chrome.tabs.create({ url: 'https://offlo--offlo2-app.asia-east1.hosted.app/analysis' });
+  // 도메인 추가
+  const handleAdd = () => {
+    const input = document.getElementById('domainInput') as HTMLInputElement;
+    const domain = input.value.trim();
+    if (!domain) return;
+    chrome.runtime.sendMessage({ type: 'ADD_DOMAIN', domain }, () => {
+      input.value = '';
+      init();
+    });
+  };
+  document.getElementById('addBtn')!.addEventListener('click', handleAdd);
+  (document.getElementById('domainInput') as HTMLInputElement)
+    .addEventListener('keydown', e => { if (e.key === 'Enter') handleAdd(); });
+
+  // 세션 시작 (프리셋)
+  document.querySelectorAll<HTMLElement>('.btn-dur').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (blockedDomains.length === 0) {
+        showToast('차단할 사이트를 먼저 추가해주세요.');
+        return;
+      }
+      chrome.runtime.sendMessage(
+        { type: 'START_SESSION', durationMs: parseInt(btn.dataset.ms!) },
+        () => init()
+      );
+    });
   });
+
+  // 세션 시작 (직접 입력)
+  document.getElementById('startCustomBtn')?.addEventListener('click', () => {
+    const min = parseInt((document.getElementById('customMin') as HTMLInputElement).value);
+    if (!min || min < 1) { showToast('시간을 입력해주세요.'); return; }
+    if (blockedDomains.length === 0) { showToast('차단할 사이트를 먼저 추가해주세요.'); return; }
+    chrome.runtime.sendMessage({ type: 'START_SESSION', durationMs: min * 60 * 1000 }, () => init());
+  });
+
+  // 세션 중단
+  document.getElementById('stopBtn')?.addEventListener('click', () => {
+    if (!confirm('세션을 중단하면 이번 세션의 디톡스 시간이 적립되지 않습니다.\n정말 중단할까요?')) return;
+    chrome.runtime.sendMessage({ type: 'STOP_SESSION' }, () => init());
+  });
+
+  // 로그아웃
+  document.getElementById('logoutBtn')!.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ type: 'LOGOUT' }, () => renderLogin());
+  });
+
+  // 카운트다운 시작
+  if (session?.active) startCountdown(session);
+}
+
+/* ── 토스트 메시지 ──────────────────────────────────────── */
+
+function showToast(msg: string) {
+  const existing = document.getElementById('toast');
+  existing?.remove();
+  const el = document.createElement('div');
+  el.id = 'toast';
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
 }
 
 /* ── 초기화 ─────────────────────────────────────────────── */
 
-async function init(): Promise<void> {
-  const { idToken, expired } = await checkAuth();
-  if (!idToken) {
-    renderLogin(expired);
-    return;
+async function init() {
+  const state = await getState();
+  if (!state?.loggedIn) {
+    renderLogin();
+  } else {
+    renderMain(state);
   }
-  const data = await getTodayData();
-  renderDashboard(data);
 }
 
 document.addEventListener('DOMContentLoaded', init);
