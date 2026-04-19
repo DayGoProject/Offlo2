@@ -76,14 +76,6 @@ function injectOverlay() {
       transition: background 0.2s;
     }
     #offlo-back:hover { background: rgba(255,255,255,0.12); }
-    #offlo-unblock {
-      padding: 12px 24px; border-radius: 999px; cursor: pointer;
-      background: rgba(61,219,135,0.12);
-      border: 1px solid rgba(61,219,135,0.3);
-      color: #3DDB87; font-size: 14px; font-weight: 600;
-      transition: background 0.2s;
-    }
-    #offlo-unblock:hover { background: rgba(61,219,135,0.2); }
     #offlo-overlay .offlo-tip {
       margin-top: 28px;
       color: rgba(255,255,255,0.2); font-size: 12px; text-align: center;
@@ -102,7 +94,6 @@ function injectOverlay() {
     <p class="offlo-host">${window.location.hostname}</p>
     <div class="offlo-btns">
       <button id="offlo-back">돌아가기</button>
-      <button id="offlo-unblock">이 세션만 해제</button>
     </div>
     <p class="offlo-tip">
       디톡스 세션 중입니다.<br>
@@ -119,10 +110,6 @@ function injectOverlay() {
     history.length > 1 ? history.back() : window.close();
   });
 
-  document.getElementById('offlo-unblock')!.addEventListener('click', () => {
-    // 이 세션 동안만 이 탭에서 차단 해제 (영구 차단 목록은 유지)
-    removeOverlay();
-  });
 }
 
 /* ── 최초 실행 ──────────────────────────────────────────── */
