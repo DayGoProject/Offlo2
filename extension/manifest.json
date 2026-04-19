@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Offlo",
+  "version": "0.1.0",
+  "description": "디지털 디톡스 파트너 — 웹 사용 시간 자동 추적",
+  "permissions": [
+    "tabs",
+    "storage",
+    "alarms",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://offlo--offlo2-app.asia-east1.hosted.app/*",
+      "https://offlo2-app.web.app/*"
+    ]
+  }
+}
