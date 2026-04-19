@@ -1,0 +1,57 @@
+runConfig:
+  runtime: nodejs22
+  cpu: 1
+  memoryMiB: 512
+  concurrency: 80
+  minInstances: 0
+
+env:
+  # ── Public Firebase Config (NEXT_PUBLIC_) ──────────────────
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyDb8V-DfsbS8OcNxVm9_U1ZhVzoR8vObSw
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: offlo2-app.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: offlo2-app
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: offlo2-app.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "620862485046"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: 1:620862485046:web:46ce113fa302cc46125e97
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # ── Server-only Secrets (Secret Manager) ──────────────────
+  - variable: DATABASE_URL
+    secret: DATABASE_URL
+
+  - variable: DIRECT_URL
+    secret: DIRECT_URL
+
+  - variable: SUPABASE_SERVICE_ROLE_KEY
+    secret: SUPABASE_SERVICE_ROLE_KEY
+
+  - variable: FIREBASE_SERVICE_ACCOUNT_KEY
+    secret: FIREBASE_SERVICE_ACCOUNT_KEY
