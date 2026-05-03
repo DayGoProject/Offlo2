@@ -24,6 +24,9 @@ env:
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
     value: 1:620862485046:web:46ce113fa302cc46125e97
 
+  - variable: NEXT_PUBLIC_EXTENSION_ID
+    value: khmkgienplgobphodbdhjdpiljapgkpo
+
   - variable: DATABASE_URL
     secret: DATABASE_URL
 

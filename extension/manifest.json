@@ -28,7 +28,8 @@
   "externally_connectable": {
     "matches": [
       "https://offlo--offlo2-app.asia-east1.hosted.app/*",
-      "https://offlo2-app.web.app/*"
+      "https://offlo2-app.web.app/*",
+      "http://localhost:3000/*"
     ]
   }
 }

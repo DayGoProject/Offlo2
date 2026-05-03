@@ -15,8 +15,9 @@ function ExtensionAuthContent() {
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleLogin = async () => {
-    if (!extensionId) {
-      setErrorMsg('확장 프로그램 ID가 없습니다. 팝업에서 다시 시도해주세요.');
+    const allowedId = process.env.NEXT_PUBLIC_EXTENSION_ID;
+    if (!extensionId || !allowedId || extensionId !== allowedId) {
+      setErrorMsg('인증되지 않은 확장 프로그램입니다. Offlo 공식 확장 프로그램에서 다시 시도해주세요.');
       setStatus('error');
       return;
     }
