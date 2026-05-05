@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { doc, getDoc } from "firebase/firestore";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/services/firebase";
-import Navbar from "@/components/Navbar";
+import { logout } from "@/services/auth";
 
-/* ── 타입 ────────────────────────────────────────────────── */
+/* ── 타입 ─────────────────────────────────────────────────────── */
 
 interface Analysis {
   id: string;
@@ -22,19 +23,18 @@ interface Goal {
   id: string;
   title: string;
   targetMinutes: number;
-  startDate: string;
   endDate: string;
-  status: string;
 }
 
-/* ── 유틸 ────────────────────────────────────────────────── */
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+interface WeekPoint {
+  day: string;
+  minutes: number;
+  isToday: boolean;
 }
 
-function formatMinutes(min: number): string {
+/* ── 유틸 ─────────────────────────────────────────────────────── */
+
+function fmt(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
   if (h > 0 && m > 0) return `${h}시간 ${m}분`;
@@ -42,19 +42,179 @@ function formatMinutes(min: number): string {
   return `${m}분`;
 }
 
-function scoreColor(score: number): string {
-  if (score >= 70) return "text-brand";
-  if (score >= 40) return "text-yellow-400";
-  return "text-red-400";
+function relDate(iso: string): string {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (diff === 0) return "오늘";
+  if (diff === 1) return "어제";
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()}`;
 }
 
-function getTodayKST(): string {
-  return new Date(Date.now() + 9 * 60 * 60 * 1000).toLocaleDateString("ko-KR", {
-    year: "numeric", month: "long", day: "numeric", weekday: "long",
+function buildWeekData(analyses: Analysis[]): WeekPoint[] {
+  const DAY = ["일", "월", "화", "수", "목", "금", "토"];
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const dateStr = d.toISOString().slice(0, 10);
+    const match = analyses
+      .filter((a) => a.periodType === "daily")
+      .find((a) => a.createdAt.slice(0, 10) === dateStr);
+    return { day: DAY[d.getDay()], minutes: match?.totalMinutes ?? 0, isToday: i === 6 };
   });
 }
 
-/* ── 페이지 ──────────────────────────────────────────────── */
+/* ── SVG: 동심 링 차트 ─────────────────────────────────────────── */
+
+function RingChart({ score, screenRatio, size = 164 }: { score: number; screenRatio: number; size?: number }) {
+  const cx = size / 2;
+  const cy = size / 2;
+
+  const or = size / 2 - 13; // outer radius
+  const ir = size / 2 - 34; // inner radius
+  const oc = 2 * Math.PI * or;
+  const ic = 2 * Math.PI * ir;
+
+  return (
+    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+      <circle cx={cx} cy={cy} r={or} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="11" />
+      <circle
+        cx={cx} cy={cy} r={or} fill="none"
+        stroke="#3DDB87" strokeWidth="11" strokeLinecap="round"
+        strokeDasharray={oc} strokeDashoffset={oc * (1 - Math.min(score / 100, 1))}
+      />
+      <circle cx={cx} cy={cy} r={ir} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="9" />
+      <circle
+        cx={cx} cy={cy} r={ir} fill="none"
+        stroke="rgba(61,219,135,0.45)" strokeWidth="9" strokeLinecap="round"
+        strokeDasharray={ic} strokeDashoffset={ic * (1 - Math.min(screenRatio, 1))}
+      />
+    </svg>
+  );
+}
+
+/* ── SVG: 반원 게이지 ──────────────────────────────────────────── */
+
+function GaugeArc({ value, max, size = 220 }: { value: number; max: number; size?: number }) {
+  const cx = size / 2;
+  const cy = size * 0.56;
+  const r = size * 0.38;
+  const sw = 13;
+  const len = Math.PI * r;
+  const offset = len * (1 - Math.min(value / max, 1));
+
+  const sx = cx - r; const sy = cy;
+  const ex = cx + r; const ey = cy;
+
+  return (
+    <svg width={size} height={size * 0.62} viewBox={`0 0 ${size} ${size * 0.62}`}>
+      <path d={`M ${sx} ${sy} A ${r} ${r} 0 0 0 ${ex} ${ey}`}
+        fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={sw} strokeLinecap="round" />
+      <path d={`M ${sx} ${sy} A ${r} ${r} 0 0 0 ${ex} ${ey}`}
+        fill="none" stroke="#3DDB87" strokeWidth={sw} strokeLinecap="round"
+        strokeDasharray={len} strokeDashoffset={offset} />
+    </svg>
+  );
+}
+
+/* ── Recharts 커스텀 툴팁 ──────────────────────────────────────── */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function BarTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl px-3 py-2 text-xs shadow-lg"
+      style={{ background: "#1a1a26", border: "1px solid rgba(255,255,255,0.1)" }}>
+      <p style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
+      <p className="font-bold text-brand mt-0.5">{fmt(payload[0].value)}</p>
+    </div>
+  );
+}
+
+/* ── 사이드바 아이콘 ───────────────────────────────────────────── */
+
+const IC = {
+  dashboard: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" />
+    </svg>
+  ),
+  analysis: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a10 10 0 1 0 10 10" /><path d="M12 2v10l6.3 6.3" />
+    </svg>
+  ),
+  goal: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
+    </svg>
+  ),
+  logout: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  ),
+};
+
+/* ── 사이드바 ──────────────────────────────────────────────────── */
+
+function Sidebar({ onLogout }: { onLogout: () => void }) {
+  const NAV = [
+    { href: "/dashboard", label: "대시보드", icon: IC.dashboard },
+    { href: "/analysis",  label: "AI 분석",  icon: IC.analysis },
+    { href: "/goals",     label: "목표",     icon: IC.goal },
+  ];
+
+  return (
+    <aside className="fixed top-0 left-0 h-full w-56 flex flex-col z-40"
+      style={{ background: "var(--bg-card)", borderRight: "1px solid var(--border-card)" }}>
+      <div className="px-6 pt-7 pb-6">
+        <span className="text-gradient text-xl font-extrabold tracking-tight">Offlo</span>
+      </div>
+
+      <nav className="flex-1 px-3 space-y-0.5">
+        {NAV.map(({ href, label, icon }) => (
+          <Link key={href} href={href}
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+            style={{ color: "var(--text-secondary)" }}
+            // active styling handled via CSS — kept simple here
+          >
+            <span className="opacity-70">{icon}</span>
+            {label}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="px-3 pb-6">
+        <button onClick={onLogout}
+          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/[0.04]"
+          style={{ color: "var(--text-muted)" }}>
+          <span className="opacity-60">{IC.logout}</span>
+          로그아웃
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+/* ── 카드 래퍼 ─────────────────────────────────────────────────── */
+
+function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`rounded-2xl p-5 ${className}`}
+      style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}>
+      {children}
+    </div>
+  );
+}
+
+/* ── 스켈레톤 ──────────────────────────────────────────────────── */
+
+function Skeleton({ h = "h-4", w = "w-full", className = "" }: { h?: string; w?: string; className?: string }) {
+  return <div className={`${h} ${w} rounded-lg animate-pulse ${className}`} style={{ background: "var(--bg-bar)" }} />;
+}
+
+/* ── 메인 페이지 ───────────────────────────────────────────────── */
 
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
@@ -62,8 +222,8 @@ export default function DashboardPage() {
 
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [detoxMinutes, setDetoxMinutes] = useState<number | null>(null);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [detoxMin, setDetoxMin] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -71,296 +231,318 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return;
-
-    async function fetchAll() {
-      setDataLoading(true);
-      const token = await user!.getIdToken();
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const [analysesRes, goalsRes, plantSnap] = await Promise.all([
-        fetch("/api/analyses?limit=5", { headers }),
-        fetch("/api/goals?status=active", { headers }),
-        getDoc(doc(db, "users", user!.uid, "garden", "plant")),
+    (async () => {
+      const token = await user.getIdToken();
+      const h = { Authorization: `Bearer ${token}` };
+      const [aRes, gRes, snap] = await Promise.all([
+        fetch("/api/analyses?limit=10", { headers: h }),
+        fetch("/api/goals?status=active", { headers: h }),
+        getDoc(doc(db, "users", user.uid, "garden", "plant")),
       ]);
-
-      if (analysesRes.ok) {
-        const data = await analysesRes.json();
-        setAnalyses(data.analyses ?? []);
-      }
-      if (goalsRes.ok) {
-        const data = await goalsRes.json();
-        setGoals(data.goals ?? []);
-      }
-      if (plantSnap.exists()) {
-        setDetoxMinutes(plantSnap.data()?.totalDetoxMinutes ?? 0);
-      } else {
-        setDetoxMinutes(0);
-      }
-
-      setDataLoading(false);
-    }
-
-    fetchAll();
+      if (aRes.ok) setAnalyses((await aRes.json()).analyses ?? []);
+      if (gRes.ok) setGoals((await gRes.json()).goals ?? []);
+      setDetoxMin(snap.exists() ? (snap.data()?.totalDetoxMinutes ?? 0) : 0);
+      setLoading(false);
+    })();
   }, [user]);
 
-  if (authLoading || (!user && !authLoading)) return null;
+  async function handleLogout() {
+    await logout();
+    router.push("/");
+  }
 
-  const latestAnalysis = analyses[0] ?? null;
-  const displayName = user?.displayName ?? user?.email?.split("@")[0] ?? "사용자";
+  if (authLoading || !user) return null;
+
+  const latest = analyses[0] ?? null;
+  const latestDaily = analyses.find((a) => a.periodType === "daily") ?? null;
+  const weekData = buildWeekData(analyses);
+  const maxMin = Math.max(...weekData.map((d) => d.minutes), 120);
+  const displayName = user.displayName ?? user.email?.split("@")[0] ?? "사용자";
+  const gaugeMax = Math.max(detoxMin ?? 0, 60);
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--bg-page)" }}>
-      <Navbar />
+    <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
+      <Sidebar onLogout={handleLogout} />
 
-      <main className="max-w-4xl mx-auto px-6 pt-28 pb-20">
+      <div className="ml-56 flex-1 flex flex-col min-h-screen overflow-x-hidden">
 
-        {/* ── 헤더 ── */}
-        <div className="mb-10">
-          <p className="text-sm mb-1" style={{ color: "var(--text-muted)" }}>{getTodayKST()}</p>
-          <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
-            안녕하세요, <span className="text-brand">{displayName}</span>님
-          </h1>
-          <p className="mt-2 text-base" style={{ color: "var(--text-secondary)" }}>
-            오늘도 건강한 디지털 습관을 만들어 봐요.
-          </p>
-        </div>
-
-        {/* ── 통계 카드 ── */}
-        <div className="grid grid-cols-3 gap-4 mb-10">
-          <StatCard
-            label="누적 디톡스"
-            value={detoxMinutes === null ? "—" : formatMinutes(detoxMinutes)}
-            sub="확장 프로그램 기록"
-            loading={dataLoading}
-          />
-          <StatCard
-            label="최근 분석 점수"
-            value={latestAnalysis ? `${latestAnalysis.detoxScore}점` : "—"}
-            valueClass={latestAnalysis ? scoreColor(latestAnalysis.detoxScore) : undefined}
-            sub={latestAnalysis ? formatDate(latestAnalysis.createdAt) : "분석 기록 없음"}
-            loading={dataLoading}
-          />
-          <StatCard
-            label="활성 목표"
-            value={dataLoading ? "—" : `${goals.length}개`}
-            sub="진행 중인 목표"
-            loading={dataLoading}
-          />
-        </div>
-
-        {/* ── 최근 분석 ── */}
-        <Section
-          title="최근 분석"
-          action={analyses.length > 0 ? { label: "분석 시작", href: "/analysis" } : undefined}
-        >
-          {dataLoading ? (
-            <SkeletonList count={3} />
-          ) : analyses.length === 0 ? (
-            <EmptyState
-              icon="📊"
-              message="아직 분석 기록이 없어요"
-              action={{ label: "AI 분석 시작하기", href: "/analysis" }}
-            />
-          ) : (
-            <div className="space-y-3">
-              {analyses.slice(0, 5).map((a) => (
-                <Link
-                  key={a.id}
-                  href={`/analysis/result/${a.id}`}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl transition-all hover:scale-[1.01]"
-                  style={{
-                    background: "var(--bg-card)",
-                    border: "1px solid var(--border-card)",
-                    boxShadow: "var(--shadow-card)",
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{a.periodType === "weekly" ? "📅" : "📱"}</span>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                        {a.periodType === "weekly" ? "주간 분석" : "일간 분석"}
-                      </p>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                        {formatDate(a.createdAt)} · 총 {formatMinutes(a.totalMinutes)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-lg font-extrabold ${scoreColor(a.detoxScore)}`}>
-                      {a.detoxScore}
-                    </span>
-                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>점</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </Section>
-
-        {/* ── 활성 목표 ── */}
-        <Section
-          title="활성 목표"
-          action={{ label: "목표 관리", href: "/goals" }}
-        >
-          {dataLoading ? (
-            <SkeletonList count={2} />
-          ) : goals.length === 0 ? (
-            <EmptyState
-              icon="🎯"
-              message="진행 중인 목표가 없어요"
-              action={{ label: "목표 만들기", href: "/goals" }}
-            />
-          ) : (
-            <div className="space-y-3">
-              {goals.slice(0, 3).map((g) => (
-                <div
-                  key={g.id}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl"
-                  style={{
-                    background: "var(--bg-card)",
-                    border: "1px solid var(--border-card)",
-                    boxShadow: "var(--shadow-card)",
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">🎯</span>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{g.title}</p>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                        목표: {formatMinutes(g.targetMinutes)}/일 · ~{formatDate(g.endDate)}
-                      </p>
-                    </div>
-                  </div>
-                  <span
-                    className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(61,219,135,0.1)", color: "#3DDB87" }}
-                  >
-                    진행 중
-                  </span>
+        {/* ── 상단 스탯 바 ── */}
+        <div className="flex items-center justify-between px-7 py-4 border-b"
+          style={{ borderColor: "var(--border-card)" }}>
+          <div className="flex items-center gap-7">
+            {[
+              { label: "누적 디톡스", value: detoxMin === null ? "—" : fmt(detoxMin) },
+              { label: "오늘 스크린타임", value: latestDaily ? fmt(latestDaily.totalMinutes) : "—" },
+              { label: "총 분석 횟수", value: loading ? "—" : `${analyses.length}회` },
+              { label: "최근 점수", value: latest ? `${latest.detoxScore}점` : "—" },
+            ].map(({ label, value }, i, arr) => (
+              <div key={label} className="flex items-center gap-7">
+                <div>
+                  <p className="text-xs mb-0.5" style={{ color: "var(--text-muted)" }}>{label}</p>
+                  {loading ? (
+                    <Skeleton h="h-6" w="w-20" />
+                  ) : (
+                    <p className="text-lg font-extrabold tracking-tight text-brand">{value}</p>
+                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </Section>
+                {i < arr.length - 1 && (
+                  <div className="w-px h-8 flex-shrink-0" style={{ background: "var(--border-card)" }} />
+                )}
+              </div>
+            ))}
+          </div>
 
-        {/* ── CTA ── */}
-        <div
-          className="mt-4 rounded-2xl px-6 py-8 text-center"
-          style={{
-            background: "linear-gradient(135deg, rgba(61,219,135,0.1) 0%, rgba(61,219,135,0.04) 100%)",
-            border: "1px solid rgba(61,219,135,0.2)",
-          }}
-        >
-          <p className="text-base font-bold mb-1" style={{ color: "var(--text-primary)" }}>
-            스크린타임을 분석해 디지털 습관을 개선해보세요
-          </p>
-          <p className="text-sm mb-5" style={{ color: "var(--text-secondary)" }}>
-            스크린샷 하나로 AI가 상세히 분석해드려요
-          </p>
-          <Link
-            href="/analysis"
-            className="inline-block bg-brand text-[#0A0A0F] font-bold text-sm px-6 py-3 rounded-full hover:opacity-90 transition-opacity"
-          >
-            AI 분석 시작하기
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-brand/20 border border-brand/40 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {user.photoURL ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.photoURL} alt={displayName} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-brand text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
+              )}
+            </div>
+            <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+              {displayName}
+            </span>
+          </div>
         </div>
 
-      </main>
-    </div>
-  );
-}
+        {/* ── 카드 그리드 ── */}
+        <div className="p-6 flex-1 space-y-4">
 
-/* ── 하위 컴포넌트 ────────────────────────────────────────── */
+          {/* 1행: 오늘 분석 | 주간 차트 | 최근 기록 */}
+          <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr 272px" }}>
 
-function StatCard({
-  label, value, sub, loading, valueClass,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  loading: boolean;
-  valueClass?: string;
-}) {
-  return (
-    <div
-      className="rounded-2xl px-4 py-5"
-      style={{
-        background: "var(--bg-card)",
-        border: "1px solid var(--border-card)",
-        boxShadow: "var(--shadow-card)",
-      }}
-    >
-      <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: "var(--text-muted)" }}>
-        {label}
-      </p>
-      {loading ? (
-        <div className="h-7 w-16 rounded-lg animate-pulse" style={{ background: "var(--bg-bar)" }} />
-      ) : (
-        <p className={`text-2xl font-extrabold tracking-tight ${valueClass ?? "text-brand"}`}>
-          {value}
-        </p>
-      )}
-      <p className="text-xs mt-1" style={{ color: "var(--text-faint)" }}>{sub}</p>
-    </div>
-  );
-}
+            {/* 오늘 분석 — 링 차트 */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>오늘 분석</h3>
+                {latestDaily && (
+                  <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                    {relDate(latestDaily.createdAt)}
+                  </span>
+                )}
+              </div>
 
-function Section({
-  title, action, children,
-}: {
-  title: string;
-  action?: { label: string; href: string };
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="mb-8">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>{title}</h2>
-        {action && (
-          <Link href={action.href} className="text-xs font-semibold text-brand hover:opacity-70 transition-opacity">
-            {action.label} →
-          </Link>
-        )}
+              {loading ? (
+                <div className="flex items-center justify-center h-44">
+                  <div className="w-9 h-9 rounded-full border-2 border-t-brand animate-spin"
+                    style={{ borderColor: "rgba(61,219,135,0.2)", borderTopColor: "#3DDB87" }} />
+                </div>
+              ) : latestDaily ? (
+                <div className="flex items-center gap-5">
+                  <div className="relative flex-shrink-0" style={{ width: 164, height: 164 }}>
+                    <RingChart
+                      score={latestDaily.detoxScore}
+                      screenRatio={latestDaily.totalMinutes / 480}
+                      size={164}
+                    />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-3xl font-extrabold text-brand leading-none">
+                        {latestDaily.detoxScore}
+                      </span>
+                      <span className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>점</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-2.5 h-2.5 rounded-full bg-brand" />
+                        <span className="text-xs" style={{ color: "var(--text-muted)" }}>디톡스 점수</span>
+                      </div>
+                      <p className="text-2xl font-extrabold text-brand pl-[18px]">
+                        {latestDaily.detoxScore}%
+                      </p>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ background: "rgba(61,219,135,0.45)" }} />
+                        <span className="text-xs" style={{ color: "var(--text-muted)" }}>스크린타임</span>
+                      </div>
+                      <p className="text-2xl font-extrabold pl-[18px]" style={{ color: "var(--text-primary)" }}>
+                        {Math.round(Math.min(latestDaily.totalMinutes / 480, 1) * 100)}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-44 gap-3">
+                  <span className="text-4xl">📱</span>
+                  <p className="text-sm" style={{ color: "var(--text-muted)" }}>분석 기록이 없어요</p>
+                  <Link href="/analysis" className="text-xs font-semibold text-brand hover:opacity-70 transition-opacity">
+                    분석 시작하기 →
+                  </Link>
+                </div>
+              )}
+            </Card>
+
+            {/* 주간 스크린타임 — 바 차트 */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>주간 스크린타임</h3>
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>최근 7일</span>
+              </div>
+
+              <div style={{ height: 172 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weekData} barSize={22} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.35)" }}
+                      axisLine={false} tickLine={false} />
+                    <YAxis tickFormatter={(v) => v === 0 ? "" : `${Math.floor(v / 60)}h`}
+                      tick={{ fontSize: 10, fill: "rgba(255,255,255,0.25)" }}
+                      axisLine={false} tickLine={false} domain={[0, maxMin]} />
+                    <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(255,255,255,0.02)" }} />
+                    <Bar dataKey="minutes" radius={[5, 5, 0, 0]}>
+                      {weekData.map((d, i) => (
+                        <Cell key={i}
+                          fill={d.isToday ? "#3DDB87" : d.minutes > 0 ? "rgba(61,219,135,0.3)" : "rgba(255,255,255,0.04)"}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="flex items-center gap-4 mt-3">
+                {[
+                  { color: "#3DDB87", label: "오늘" },
+                  { color: "rgba(61,219,135,0.3)", label: "분석 있음" },
+                  { color: "rgba(255,255,255,0.08)", label: "데이터 없음" },
+                ].map(({ color, label }) => (
+                  <div key={label} className="flex items-center gap-1.5">
+                    <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ background: color }} />
+                    <span className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* 최근 기록 */}
+            <Card className="flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>최근 기록</h3>
+                <Link href="/analysis" className="text-xs font-semibold text-brand hover:opacity-70 transition-opacity">
+                  분석 시작 →
+                </Link>
+              </div>
+
+              <div className="flex-1 space-y-2 overflow-y-auto" style={{ maxHeight: 218 }}>
+                {loading ? (
+                  Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} h="h-12" />)
+                ) : analyses.length === 0 ? (
+                  <p className="text-xs text-center py-10" style={{ color: "var(--text-muted)" }}>기록 없음</p>
+                ) : (
+                  analyses.slice(0, 7).map((a) => (
+                    <Link key={a.id} href={`/analysis/result/${a.id}`}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-xl transition-colors hover:bg-white/[0.04]"
+                      style={{ background: "var(--bg-subtle)" }}>
+                      <div>
+                        <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                          {a.periodType === "weekly" ? "주간" : "일간"} · {relDate(a.createdAt)}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                          {fmt(a.totalMinutes)}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <span className={`text-base font-extrabold ${
+                          a.detoxScore >= 70 ? "text-brand" : a.detoxScore >= 40 ? "text-yellow-400" : "text-red-400"
+                        }`}>
+                          {a.detoxScore}
+                        </span>
+                        <p className="text-xs" style={{ color: "var(--text-muted)" }}>점</p>
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* 2행: 디톡스 게이지 | 활성 목표 */}
+          <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 272px" }}>
+
+            {/* 누적 디톡스 — 게이지 + 통계 */}
+            <Card>
+              <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
+                누적 디톡스 현황
+              </h3>
+              <div className="flex items-center gap-8">
+                <div className="relative flex-shrink-0">
+                  <GaugeArc value={detoxMin ?? 0} max={gaugeMax} size={220} />
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center pb-1">
+                    <p className="text-3xl font-extrabold text-brand leading-none">
+                      {detoxMin === null ? "—" : fmt(detoxMin)}
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>총 디톡스 시간</p>
+                  </div>
+                </div>
+
+                <div className="flex-1 space-y-3">
+                  <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                    Offlo 확장 프로그램으로 디톡스 세션을 완료하면 시간이 자동으로 적립됩니다.
+                    세션 중 차단된 사이트 접근을 참으면 반려 식물이 자라요.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: "최근 분석 점수", value: latest ? `${latest.detoxScore}점` : "—" },
+                      { label: "총 분석 횟수",   value: loading ? "—" : `${analyses.length}회` },
+                      { label: "활성 목표",      value: loading ? "—" : `${goals.length}개` },
+                      { label: "주간 분석",      value: loading ? "—" : `${analyses.filter(a => a.periodType === "weekly").length}회` },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="px-3 py-2.5 rounded-xl"
+                        style={{ background: "var(--bg-subtle)" }}>
+                        <p className="text-xs mb-0.5" style={{ color: "var(--text-muted)" }}>{label}</p>
+                        <p className="text-sm font-bold text-brand">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* 활성 목표 */}
+            <Card className="flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>활성 목표</h3>
+                <Link href="/goals" className="text-xs font-semibold text-brand hover:opacity-70 transition-opacity">
+                  전체 보기 →
+                </Link>
+              </div>
+
+              <div className="flex-1 space-y-2">
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} h="h-14" />)
+                ) : goals.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-6 gap-2">
+                    <span className="text-3xl">🎯</span>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>진행 중인 목표 없음</p>
+                  </div>
+                ) : (
+                  goals.slice(0, 3).map((g) => (
+                    <div key={g.id} className="px-3 py-2.5 rounded-xl"
+                      style={{ background: "var(--bg-subtle)" }}>
+                      <p className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                        {g.title}
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                        목표 {fmt(g.targetMinutes)}/일 · ~{new Date(g.endDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <Link href="/goals"
+                className="mt-4 block w-full text-center py-2.5 rounded-xl text-sm font-bold text-brand transition-colors hover:bg-brand/10"
+                style={{ border: "1px solid rgba(61,219,135,0.25)" }}>
+                목표 관리하기
+              </Link>
+            </Card>
+          </div>
+        </div>
       </div>
-      {children}
-    </section>
-  );
-}
-
-function EmptyState({
-  icon, message, action,
-}: {
-  icon: string;
-  message: string;
-  action: { label: string; href: string };
-}) {
-  return (
-    <div
-      className="rounded-2xl px-4 py-10 text-center"
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
-    >
-      <p className="text-3xl mb-3">{icon}</p>
-      <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>{message}</p>
-      <Link
-        href={action.href}
-        className="inline-block text-sm font-semibold text-brand border border-brand/30 px-4 py-2 rounded-full hover:bg-brand/10 transition-colors"
-      >
-        {action.label}
-      </Link>
-    </div>
-  );
-}
-
-function SkeletonList({ count }: { count: number }) {
-  return (
-    <div className="space-y-3">
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          className="h-16 rounded-xl animate-pulse"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
-        />
-      ))}
     </div>
   );
 }
