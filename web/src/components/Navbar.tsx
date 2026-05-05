@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/services/auth";
 import { useTheme } from "@/context/ThemeContext";
@@ -24,6 +24,18 @@ function MoonIcon() {
   );
 }
 
+const LANDING_NAV_LINKS = [
+  { href: "/analysis", label: "AI 분석" },
+  { href: "#companion", label: "반려 키우기" },
+  { href: "#features", label: "기능" },
+];
+
+const APP_NAV_LINKS = [
+  { href: "/dashboard", label: "대시보드" },
+  { href: "/analysis", label: "AI 분석" },
+  { href: "/goals", label: "목표" },
+];
+
 export default function Navbar() {
   const { user, loading } = useAuth();
   const { theme, toggle } = useTheme();
@@ -31,6 +43,11 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
+
+  const isLanding = pathname === "/";
+  // 랜딩 페이지에서 스크롤 전에만 투명 배경 사용
+  const transparent = isLanding && !scrolled;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -65,32 +82,36 @@ export default function Navbar() {
     return getDisplayName().charAt(0).toUpperCase();
   }
 
+  const navLinks = user ? APP_NAV_LINKS : LANDING_NAV_LINKS;
+
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "bg-[#F4F6F4]/95 dark:bg-[#0A0A0F]/95 backdrop-blur-md border-b border-black/[0.06] dark:border-white/[0.06]"
-          : "bg-black/55 backdrop-blur-sm"
+        transparent
+          ? "bg-black/55 backdrop-blur-sm"
+          : "bg-[#F4F6F4]/95 dark:bg-[#0A0A0F]/95 backdrop-blur-md border-b border-black/[0.06] dark:border-white/[0.06]"
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="text-gradient text-xl font-extrabold tracking-tight">
+        <Link href={user ? "/dashboard" : "/"} className="text-gradient text-xl font-extrabold tracking-tight">
           Offlo
         </Link>
 
         {/* Nav Links */}
         <div className="hidden md:flex items-center gap-8">
-          {[
-            { href: "/analysis", label: "AI 분석" },
-            { href: "#companion", label: "반려 키우기" },
-            { href: "#features", label: "기능" },
-          ].map(({ href, label }) => (
+          {navLinks.map(({ href, label }) => (
             <Link
               key={href}
               href={href}
-              className={`text-sm transition-colors ${scrolled ? "text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white" : "hover:opacity-100"}`}
-              style={scrolled ? undefined : { color: "rgba(255,255,255,0.8)" }}
+              className={`text-sm transition-colors ${
+                transparent
+                  ? "hover:opacity-100"
+                  : pathname === href
+                    ? "text-brand font-semibold"
+                    : "text-black/50 dark:text-white/60 hover:text-black dark:hover:text-white"
+              }`}
+              style={transparent ? { color: "rgba(255,255,255,0.8)" } : undefined}
             >
               {label}
             </Link>
@@ -118,7 +139,7 @@ export default function Navbar() {
                 </div>
                 <span
                   className="text-sm hidden sm:block"
-                  style={scrolled ? undefined : { color: "rgba(255,255,255,0.85)" }}
+                  style={transparent ? { color: "rgba(255,255,255,0.85)" } : undefined}
                 >
                   {getDisplayName()}
                 </span>
@@ -126,11 +147,14 @@ export default function Navbar() {
 
               {dropdownOpen && (
                 <div className="absolute right-0 top-12 w-44 bg-white dark:bg-[#131318] border border-black/[0.08] dark:border-white/[0.08] rounded-xl overflow-hidden shadow-2xl">
+                  <Link href="/dashboard" className="block px-4 py-3 text-sm text-black/60 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors" onClick={() => setDropdownOpen(false)}>
+                    대시보드
+                  </Link>
                   <Link href="/analysis" className="block px-4 py-3 text-sm text-black/60 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors" onClick={() => setDropdownOpen(false)}>
                     AI 분석하기
                   </Link>
-                  <Link href="/dashboard" className="block px-4 py-3 text-sm text-black/60 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors" onClick={() => setDropdownOpen(false)}>
-                    대시보드
+                  <Link href="/goals" className="block px-4 py-3 text-sm text-black/60 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors" onClick={() => setDropdownOpen(false)}>
+                    목표 관리
                   </Link>
                   <div className="border-t border-black/[0.06] dark:border-white/[0.06]" />
                   <button className="w-full text-left px-4 py-3 text-sm text-black/60 dark:text-white/70 hover:text-black dark:hover:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors" onClick={handleLogout}>
@@ -144,7 +168,7 @@ export default function Navbar() {
               <Link
                 href="/login"
                 className="text-sm transition-colors"
-                style={scrolled ? undefined : { color: "rgba(255,255,255,0.8)" }}
+                style={transparent ? { color: "rgba(255,255,255,0.8)" } : undefined}
               >
                 로그인
               </Link>
@@ -161,8 +185,12 @@ export default function Navbar() {
           <button
             onClick={toggle}
             aria-label={theme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환"}
-            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${scrolled ? "border border-black/[0.1] dark:border-white/[0.1] text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:border-black/[0.2] dark:hover:border-white/[0.2] bg-black/[0.03] dark:bg-white/[0.04]" : "border hover:opacity-100"}`}
-            style={scrolled ? undefined : { borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)" }}
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-all ${
+              transparent
+                ? "border hover:opacity-100"
+                : "border border-black/[0.1] dark:border-white/[0.1] text-black/50 dark:text-white/50 hover:text-black dark:hover:text-white hover:border-black/[0.2] dark:hover:border-white/[0.2] bg-black/[0.03] dark:bg-white/[0.04]"
+            }`}
+            style={transparent ? { borderColor: "rgba(255,255,255,0.2)", color: "rgba(255,255,255,0.7)" } : undefined}
           >
             {theme === "dark" ? <SunIcon /> : <MoonIcon />}
           </button>
