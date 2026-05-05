@@ -47,7 +47,7 @@
 - 디톡스 현황 시각화 (프리미엄: 상세 차트)
 - 분석 기록 히스토리
 
-### 🔒 Chrome / Edge 확장 프로그램 *(개발 예정)*
+### 🔒 Chrome / Edge 확장 프로그램
 - Manifest V3 기반 웹사이트 차단
 - 실시간 사용 시간 추적
 
@@ -135,7 +135,7 @@ firebase deploy --only functions
 | 4단계 | PostgreSQL 구축 (Supabase 프로젝트 생성 · Prisma 스키마 설계) | ✅ 완료 |
 | 5단계 | Next.js API Routes 구현 (users · analyses · goals · badges CRUD) | ✅ 완료 |
 | 6단계 | Firestore analyses → Supabase 이전 · 프론트엔드 연결 전환 | ✅ 완료 |
-| 7단계 | Chrome 확장 프로그램 개발 (Manifest V3) | 🔲 예정 |
+| 7단계 | Chrome 확장 프로그램 개발 (Manifest V3) | ✅ 완료 |
 | 8단계 | 대시보드 고도화 · 부가 페이지 구축 | 🔲 예정 |
 | 9단계 | 게이미피케이션 구현 (반려 식물 · 동물) | 🔲 예정 |
 | 10단계 | 알림 · 리마인더 시스템 구현 | 🔲 예정 |
