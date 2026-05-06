@@ -7,7 +7,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/services/firebase";
-import { logout } from "@/services/auth";
+import AppSidebar from "@/components/AppSidebar";
 
 /* ── 타입 ─────────────────────────────────────────────────────── */
 
@@ -130,73 +130,6 @@ function BarTooltip({ active, payload, label }: any) {
   );
 }
 
-/* ── 사이드바 아이콘 ───────────────────────────────────────────── */
-
-const IC = {
-  dashboard: (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" />
-    </svg>
-  ),
-  analysis: (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2a10 10 0 1 0 10 10" /><path d="M12 2v10l6.3 6.3" />
-    </svg>
-  ),
-  goal: (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
-    </svg>
-  ),
-  logout: (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-    </svg>
-  ),
-};
-
-/* ── 사이드바 ──────────────────────────────────────────────────── */
-
-function Sidebar({ onLogout }: { onLogout: () => void }) {
-  const NAV = [
-    { href: "/dashboard", label: "대시보드", icon: IC.dashboard },
-    { href: "/analysis",  label: "AI 분석",  icon: IC.analysis },
-    { href: "/goals",     label: "목표",     icon: IC.goal },
-  ];
-
-  return (
-    <aside className="fixed top-0 left-0 h-full w-56 flex flex-col z-40"
-      style={{ background: "var(--bg-card)", borderRight: "1px solid var(--border-card)" }}>
-      <div className="px-6 pt-7 pb-6">
-        <span className="text-gradient text-xl font-extrabold tracking-tight">Offlo</span>
-      </div>
-
-      <nav className="flex-1 px-3 space-y-0.5">
-        {NAV.map(({ href, label, icon }) => (
-          <Link key={href} href={href}
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-            style={{ color: "var(--text-secondary)" }}
-            // active styling handled via CSS — kept simple here
-          >
-            <span className="opacity-70">{icon}</span>
-            {label}
-          </Link>
-        ))}
-      </nav>
-
-      <div className="px-3 pb-6">
-        <button onClick={onLogout}
-          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/[0.04]"
-          style={{ color: "var(--text-muted)" }}>
-          <span className="opacity-60">{IC.logout}</span>
-          로그아웃
-        </button>
-      </div>
-    </aside>
-  );
-}
-
 /* ── 카드 래퍼 ─────────────────────────────────────────────────── */
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -246,11 +179,6 @@ export default function DashboardPage() {
     })();
   }, [user]);
 
-  async function handleLogout() {
-    await logout();
-    router.push("/");
-  }
-
   if (authLoading || !user) return null;
 
   const latest = analyses[0] ?? null;
@@ -262,7 +190,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
-      <Sidebar onLogout={handleLogout} />
+      <AppSidebar />
 
       <div className="ml-56 flex-1 flex flex-col min-h-screen overflow-x-hidden">
 
