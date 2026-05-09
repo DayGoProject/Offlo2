@@ -25,11 +25,30 @@ const NAV = [
     ),
   },
   {
+    href: "/history",
+    label: "분석 기록",
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 8v4l3 3" /><circle cx="12" cy="12" r="10" />
+      </svg>
+    ),
+  },
+  {
     href: "/goals",
     label: "목표",
     icon: (
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
+      </svg>
+    ),
+  },
+  {
+    href: "/badges",
+    label: "배지",
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="6" />
+        <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
       </svg>
     ),
   },
@@ -50,12 +69,14 @@ export default function AppSidebar() {
       style={{ background: "var(--bg-card)", borderRight: "1px solid var(--border-card)" }}
     >
       <div className="px-6 pt-7 pb-6">
-        <span className="text-gradient text-xl font-extrabold tracking-tight">Offlo</span>
+        <Link href="/" className="text-gradient text-xl font-extrabold tracking-tight hover:opacity-80 transition-opacity">
+          Offlo
+        </Link>
       </div>
 
       <nav className="flex-1 px-3 space-y-0.5">
         {NAV.map(({ href, label, icon }) => {
-          const active = pathname === href;
+          const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={href}
@@ -73,7 +94,21 @@ export default function AppSidebar() {
         })}
       </nav>
 
-      <div className="px-3 pb-6">
+      <div className="px-3 pb-6 space-y-0.5">
+        <Link
+          href="/settings"
+          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/[0.04]"
+          style={{ color: pathname === "/settings" ? "#3DDB87" : "var(--text-muted)" }}
+        >
+          <span style={{ opacity: pathname === "/settings" ? 1 : 0.6 }}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </span>
+          설정
+        </Link>
+
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-white/[0.04]"

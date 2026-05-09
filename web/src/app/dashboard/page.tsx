@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { doc, getDoc } from "firebase/firestore";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
+import { logout } from "@/services/auth";
 import { db } from "@/services/firebase";
 import AppSidebar from "@/components/AppSidebar";
 
@@ -157,6 +158,18 @@ export default function DashboardPage() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [detoxMin, setDetoxMin] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    if (profileOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [profileOpen]);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -220,18 +233,59 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-brand/20 border border-brand/40 flex items-center justify-center overflow-hidden flex-shrink-0">
-              {user.photoURL ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.photoURL} alt={displayName} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-brand text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
-              )}
-            </div>
-            <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-              {displayName}
-            </span>
+          <div className="relative" ref={profileRef}>
+            <button
+              onClick={() => setProfileOpen((v) => !v)}
+              className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition-colors hover:bg-white/[0.05] cursor-pointer"
+            >
+              <div className="w-8 h-8 rounded-full bg-brand/20 border border-brand/40 flex items-center justify-center overflow-hidden flex-shrink-0">
+                {user.photoURL ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.photoURL} alt={displayName} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-brand text-sm font-bold">{displayName.charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              <span className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
+                {displayName}
+              </span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                style={{ color: "var(--text-muted)", transform: profileOpen ? "rotate(180deg)" : undefined, transition: "transform 0.2s" }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+
+            {profileOpen && (
+              <div
+                className="absolute right-0 top-full mt-1.5 w-40 rounded-xl overflow-hidden z-50 shadow-lg"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
+              >
+                <Link
+                  href="/settings"
+                  onClick={() => setProfileOpen(false)}
+                  className="flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors hover:bg-white/[0.05]"
+                  style={{ color: "var(--text-primary)" }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
+                  설정
+                </Link>
+                <div style={{ height: "1px", background: "var(--border-card)" }} />
+                <button
+                  onClick={async () => { setProfileOpen(false); await logout(); router.push("/"); }}
+                  className="flex items-center gap-2.5 w-full px-4 py-2.5 text-sm transition-colors hover:bg-white/[0.05] text-red-400"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  로그아웃
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
