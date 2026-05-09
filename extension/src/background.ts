@@ -103,44 +103,28 @@ async function creditDetoxTime(seconds: number): Promise<void> {
   if (minutes > 0) await syncToFirestore(minutes);
 }
 
-/* ── Firestore 동기화 ────────────────────────────────────── */
+/* ── 앱 기본 URL ─────────────────────────────────────────── */
+// 로컬 개발 시: 'http://localhost:3000'
+const APP_BASE_URL = 'https://offlo2-app.web.app';
+
+/* ── 디톡스 시간 API 적립 (Admin SDK 경유) ───────────────── */
 
 async function syncToFirestore(addMinutes: number): Promise<void> {
-  const { idToken, uid } = await getAuth();
-  if (!idToken || !uid) return;
+  const { idToken } = await getAuth();
+  if (!idToken) return;
 
-  const docUrl = `https://firestore.googleapis.com/v1/projects/offlo2-app/databases/(default)/documents/users/${uid}/garden/plant`;
-  const headers = {
-    Authorization: `Bearer ${idToken}`,
-    'Content-Type': 'application/json',
-  };
-
-  // 현재 값 조회
-  let currentMinutes = 0;
   try {
-    const res = await fetch(docUrl, { headers });
-    if (res.ok) {
-      const data = await res.json();
-      currentMinutes = parseInt(data.fields?.totalDetoxMinutes?.integerValue ?? '0', 10);
-    }
-  } catch { /* 문서가 없으면 0으로 시작 */ }
-
-  const newMinutes = currentMinutes + addMinutes;
-
-  // 업데이트
-  await fetch(
-    `${docUrl}?updateMask.fieldPaths=totalDetoxMinutes&updateMask.fieldPaths=lastUpdated`,
-    {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify({
-        fields: {
-          totalDetoxMinutes: { integerValue: String(newMinutes) },
-          lastUpdated: { timestampValue: new Date().toISOString() },
-        },
-      }),
-    }
-  );
+    await fetch(`${APP_BASE_URL}/api/garden/plant-exp`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ minutes: addMinutes }),
+    });
+  } catch {
+    // 네트워크 오류 시 조용히 실패 (다음 세션에서 재시도 불가 — 손실 허용)
+  }
 }
 
 /* ── 탭 전체 알림 ────────────────────────────────────────── */

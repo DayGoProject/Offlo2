@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/services/auth";
 import { db } from "@/services/firebase";
 import AppSidebar from "@/components/AppSidebar";
-import { getPlantLevel, getAnimalStage, getAnimalEmoji, type AnimalTypeId } from "@/lib/garden";
+import { getPlantLevel, getAnimalStage, getAnimalEmoji, type AnimalTypeId } from "@/lib/garden-utils";
 
 /* ── 타입 ─────────────────────────────────────────────────────── */
 
@@ -161,6 +161,7 @@ export default function DashboardPage() {
   const [animalData, setAnimalData] = useState<{ type: AnimalTypeId | null; streak: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [gardenTab, setGardenTab] = useState<"plant" | "animal">("plant");
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -536,37 +537,53 @@ export default function DashboardPage() {
 
             {/* 정원 미니 위젯 */}
             <Card className="flex flex-col">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>정원</h3>
                 <Link href="/garden" className="text-xs font-semibold text-brand hover:opacity-70 transition-opacity">
                   정원 보기 →
                 </Link>
               </div>
 
-              <div className="flex-1 flex flex-col items-center justify-center gap-4 py-2">
-                {/* 식물 */}
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-4xl">{plantLevel.emoji}</span>
-                  <p className="text-xs font-bold text-brand">Lv.{plantLevel.level} {plantLevel.name}</p>
-                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>{fmt(detoxMin ?? 0)} 적립</p>
-                </div>
+              {/* 탭 */}
+              <div className="flex rounded-lg p-0.5 mb-4" style={{ background: "var(--bg-subtle)" }}>
+                {(["plant", "animal"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setGardenTab(tab)}
+                    className="flex-1 text-xs py-1.5 rounded-md font-semibold transition-colors cursor-pointer"
+                    style={gardenTab === tab
+                      ? { background: "var(--bg-card)", color: "var(--text-primary)" }
+                      : { color: "var(--text-muted)" }}
+                  >
+                    {tab === "plant" ? "🌱 식물" : "🐾 동물"}
+                  </button>
+                ))}
+              </div>
 
-                <div className="w-full h-px" style={{ background: "var(--border-card)" }} />
-
-                {/* 동물 */}
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-4xl">{animalEmoji}</span>
-                  {animalData?.type ? (
-                    <>
-                      <p className="text-xs font-bold text-brand">{animalStage.name}</p>
-                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>🔥 {animalData.streak}일 연속</p>
-                    </>
-                  ) : (
-                    <Link href="/garden" className="text-xs font-semibold text-brand hover:opacity-70 transition-opacity">
-                      동물 선택하기 →
-                    </Link>
-                  )}
-                </div>
+              <div className="flex-1 flex flex-col items-center justify-center gap-2 py-2">
+                {gardenTab === "plant" ? (
+                  <>
+                    <span className="text-5xl">{plantLevel.emoji}</span>
+                    <p className="text-xs font-bold text-brand">Lv.{plantLevel.level} {plantLevel.name}</p>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>{fmt(detoxMin ?? 0)} 적립</p>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-5xl">{animalEmoji}</span>
+                    {animalData?.type ? (
+                      <>
+                        <p className="text-xs font-bold text-brand">{animalStage.name}</p>
+                        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                          🔥 {animalData.streak}일 연속 기록
+                        </p>
+                      </>
+                    ) : (
+                      <Link href="/garden" className="text-xs font-semibold text-brand hover:opacity-70 transition-opacity">
+                        동물 선택하기 →
+                      </Link>
+                    )}
+                  </>
+                )}
               </div>
             </Card>
           </div>

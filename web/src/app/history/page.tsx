@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
+} from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import AppSidebar from "@/components/AppSidebar";
 
@@ -33,12 +36,23 @@ function fmtDate(iso: string): string {
 function ScoreBadge({ score }: { score: number }) {
   const color = score >= 70 ? "#3DDB87" : score >= 40 ? "#facc15" : "#f87171";
   return (
-    <span
-      className="text-2xl font-extrabold"
-      style={{ color }}
-    >
+    <span className="text-2xl font-extrabold" style={{ color }}>
       {score}
     </span>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TrendTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  const color = d.score >= 70 ? "#3DDB87" : d.score >= 40 ? "#facc15" : "#f87171";
+  return (
+    <div className="rounded-xl px-3 py-2 text-xs shadow-lg"
+      style={{ background: "#1a1a26", border: "1px solid rgba(255,255,255,0.1)" }}>
+      <p style={{ color: "rgba(255,255,255,0.4)" }}>{d.label}</p>
+      <p className="font-bold mt-0.5" style={{ color }}>{d.score}점</p>
+    </div>
   );
 }
 
@@ -84,6 +98,16 @@ export default function HistoryPage() {
     ? Math.round(filtered.reduce((s, a) => s + a.detoxScore, 0) / filtered.length)
     : null;
 
+  /* 트렌드 차트 — 최근 20개 역순 정렬 */
+  const trendData = [...filtered]
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .slice(-20)
+    .map((a) => ({
+      label: fmtDate(a.createdAt),
+      score: a.detoxScore,
+      type: a.periodType,
+    }));
+
   return (
     <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
       <AppSidebar />
@@ -125,6 +149,39 @@ export default function HistoryPage() {
               </Card>
             ))}
           </div>
+
+          {/* 점수 트렌드 차트 */}
+          {!loading && trendData.length >= 2 && (
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                  디톡스 점수 변화
+                </h3>
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>최근 {trendData.length}개</span>
+              </div>
+              <div style={{ height: 160 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={trendData} margin={{ top: 4, right: 8, bottom: 0, left: -28 }}>
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }}
+                      axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "rgba(255,255,255,0.25)" }}
+                      axisLine={false} tickLine={false} />
+                    <Tooltip content={<TrendTooltip />} cursor={{ stroke: "rgba(255,255,255,0.08)" }} />
+                    <ReferenceLine y={70} stroke="rgba(61,219,135,0.2)" strokeDasharray="4 4" />
+                    <Line
+                      type="monotone" dataKey="score"
+                      stroke="#3DDB87" strokeWidth={2}
+                      dot={{ fill: "#3DDB87", r: 3, strokeWidth: 0 }}
+                      activeDot={{ r: 5, fill: "#3DDB87", strokeWidth: 0 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
+                점선: 70점 기준선 (좋음)
+              </p>
+            </Card>
+          )}
 
           {/* 필터 탭 */}
           <div className="flex gap-2">

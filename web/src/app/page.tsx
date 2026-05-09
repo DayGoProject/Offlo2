@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -427,71 +427,150 @@ function AnalysisSection({ ctaHref }: { ctaHref: string }) {
 /* ── 반려 섹션 ── */
 function CompanionSection({ ctaHref }: { ctaHref: string }) {
   const { ref, inView } = useScrollRef();
+  const [activeTab, setActiveTab]       = useState<"plant" | "animal">("plant");
+  const [activeAnimal, setActiveAnimal] = useState<"cat" | "dog" | "rabbit">("cat");
+  const [selectedPlant, setSelectedPlant] = useState(2); // 기본: 꽃봉오리
+
   const plantStages = [
-    { emoji: "🌱", label: "새싹", days: "1일차", active: false },
-    { emoji: "🌿", label: "잎", days: "7일차", active: false },
-    { emoji: "🌳", label: "나무", days: "30일차", active: true },
-    { emoji: "🌲", label: "거목", days: "90일차", active: false },
+    { emoji: "🌰", label: "씨앗",      subLabel: "0분~",      detoxTime: "58분",      progress: 48, nextLabel: "새싹",      hint: "새싹까지 62분 남았어요 🌱"   },
+    { emoji: "🌱", label: "새싹",      subLabel: "2시간~",    detoxTime: "3시간 12분", progress: 53, nextLabel: "어린 식물", hint: "어린 식물까지 4시간 48분 남았어요 🌿" },
+    { emoji: "🌸", label: "꽃봉오리",  subLabel: "20시간~",   detoxTime: "32시간",    progress: 64, nextLabel: "활짝 꽃",   hint: "활짝 꽃까지 8시간 남았어요 🌺"   },
+    { emoji: "🌳", label: "고목나무",  subLabel: "160시간+",  detoxTime: "187시간",   progress: 100, nextLabel: null,       hint: "최고 레벨 달성! 🎉"            },
   ];
+
+  const animalTypes = [
+    { id: "cat",    emoji: "🐱", label: "고양이" },
+    { id: "dog",    emoji: "🐶", label: "강아지" },
+    { id: "rabbit", emoji: "🐰", label: "토끼"   },
+  ] as const;
+
+  const animalStages = [
+    { label: "알",      subLabel: "0일"   },
+    { label: "아기",    subLabel: "1일+"  },
+    { label: "성장 중", subLabel: "7일+"  },
+    { label: "성체",    subLabel: "21일+" },
+  ];
+
+  const animalStagesForType = {
+    cat:    ["🥚", "🐱", "😺", "🐈"],
+    dog:    ["🥚", "🐶", "🐕", "🦮"],
+    rabbit: ["🥚", "🐰", "🐇", "🐇"],
+  };
+
+  const activeStageAnimal = 2; // 성장 중 고정 (데모)
+  const current = plantStages[selectedPlant];
+
+  // 비활성 카드 스타일 (다크모드 대응)
+  const inactiveCard = { background: "var(--bg-subtle, rgba(255,255,255,0.04))", border: "1px solid var(--border-card)" };
+  const activeCard   = { background: "rgba(61,219,135,0.12)", border: "1px solid rgba(61,219,135,0.35)" };
+  const inactiveTab  = { background: "transparent", border: "1px solid var(--border-card)", color: "var(--text-muted)" };
+  const activeTabStyle = { background: "rgba(61,219,135,0.15)", border: "1px solid rgba(61,219,135,0.3)", color: "#3DDB87" };
 
   return (
     <section id="companion" className="py-28 px-6 bg-black/[0.02] dark:bg-white/[0.01]">
       <div className="max-w-7xl mx-auto">
         <div ref={ref} className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
           {/* 목업 */}
-          <motion.div
-            variants={fadeLeft}
-            initial="hidden"
-            animate={inView ? "visible" : "hidden"}
-            className="relative"
-          >
-            <div
-              aria-hidden
-              className="absolute -inset-10 rounded-full pointer-events-none"
-              style={{ background: "radial-gradient(ellipse at center, rgba(61,219,135,0.07) 0%, transparent 70%)" }}
-            />
-            <div className="relative bg-white/70 dark:bg-white/[0.03] border border-black/[0.08] dark:border-white/[0.08] rounded-2xl p-6 shadow-sm dark:shadow-none">
+          <motion.div variants={fadeLeft} initial="hidden" animate={inView ? "visible" : "hidden"} className="relative">
+            <div aria-hidden className="absolute -inset-10 rounded-full pointer-events-none"
+              style={{ background: "radial-gradient(ellipse at center, rgba(61,219,135,0.07) 0%, transparent 70%)" }} />
+
+            <div className="relative rounded-2xl p-6 shadow-sm"
+              style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}>
+
+              {/* 탭 */}
               <div className="flex gap-2 mb-5">
-                <button className="flex-1 py-2 rounded-lg bg-brand/15 border border-brand/30 text-brand text-sm font-semibold">
-                  반려식물
-                </button>
-                <button className="flex-1 py-2 rounded-lg text-black/40 dark:text-white/40 text-sm hover:text-black/60 dark:hover:text-white/60 transition-colors">
-                  반려동물
-                </button>
-              </div>
-              <div className="grid grid-cols-4 gap-3 mb-5">
-                {plantStages.map((p) => (
-                  <div
-                    key={p.label}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${
-                      p.active
-                        ? "bg-brand/10 border-brand/30"
-                        : "bg-black/[0.03] dark:bg-white/[0.02] border-black/[0.06] dark:border-white/[0.06]"
-                    }`}
-                  >
-                    <span className="text-2xl">{p.emoji}</span>
-                    <span className={`text-xs font-semibold ${p.active ? "text-brand" : "text-black/30 dark:text-white/30"}`}>
-                      {p.label}
-                    </span>
-                    <span className="text-black/25 dark:text-white/25 text-[10px]">{p.days}</span>
-                  </div>
+                {(["plant", "animal"] as const).map((tab) => (
+                  <button key={tab} onClick={() => setActiveTab(tab)}
+                    className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all"
+                    style={activeTab === tab ? activeTabStyle : inactiveTab}>
+                    {tab === "plant" ? "🌱 반려식물" : "🐾 반려동물"}
+                  </button>
                 ))}
               </div>
-              <div className="bg-black/[0.04] dark:bg-white/[0.03] rounded-xl p-4">
-                <div className="flex justify-between mb-2">
-                  <span className="text-black/60 dark:text-white/60 text-sm">오늘의 디톡스 시간</span>
-                  <span className="text-brand text-sm font-semibold">3시간 12분</span>
-                </div>
-                <div className="h-1.5 bg-black/[0.07] dark:bg-white/[0.06] rounded-full overflow-hidden mb-2">
-                  <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-brand to-brand/60"
-                    initial={{ width: 0 }}
-                    animate={inView ? { width: "64%" } : { width: 0 }}
-                    transition={{ duration: 1.2, delay: 0.4, ease: "easeOut" }}
-                  />
-                </div>
-                <p className="text-black/30 dark:text-white/30 text-xs">목표까지 1시간 48분 남았습니다 🌿</p>
-              </div>
+
+              {/* ── 식물 탭 ── */}
+              {activeTab === "plant" && (
+                <>
+                  <div className="grid grid-cols-4 gap-3 mb-5">
+                    {plantStages.map((p, i) => (
+                      <button key={p.label} onClick={() => setSelectedPlant(i)}
+                        className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all hover:scale-105"
+                        style={selectedPlant === i ? activeCard : inactiveCard}>
+                        <span className="text-2xl">{p.emoji}</span>
+                        <span className="text-xs font-semibold" style={{ color: selectedPlant === i ? "#3DDB87" : "var(--text-muted)" }}>
+                          {p.label}
+                        </span>
+                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{p.subLabel}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="rounded-xl p-4" style={{ background: "var(--bg-subtle, rgba(255,255,255,0.04))", border: "1px solid var(--border-card)" }}>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm" style={{ color: "var(--text-secondary)" }}>누적 디톡스 시간</span>
+                      <span className="text-brand text-sm font-semibold">{current.detoxTime}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: "var(--border-card)" }}>
+                      <motion.div className="h-full rounded-full"
+                        style={{ background: "linear-gradient(90deg, #3DDB87, rgba(61,219,135,0.5))" }}
+                        key={selectedPlant}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${current.progress}%` }}
+                        transition={{ duration: 0.7, ease: "easeOut" }}
+                      />
+                    </div>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>{current.hint}</p>
+                  </div>
+                </>
+              )}
+
+              {/* ── 동물 탭 ── */}
+              {activeTab === "animal" && (
+                <>
+                  <div className="flex gap-2 mb-5">
+                    {animalTypes.map((a) => (
+                      <button key={a.id} onClick={() => setActiveAnimal(a.id)}
+                        className="flex-1 flex flex-col items-center gap-1 py-3 rounded-xl transition-all hover:scale-105"
+                        style={activeAnimal === a.id ? activeCard : inactiveCard}>
+                        <span className="text-2xl">{a.emoji}</span>
+                        <span className="text-xs font-semibold" style={{ color: activeAnimal === a.id ? "#3DDB87" : "var(--text-muted)" }}>
+                          {a.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-3 mb-5">
+                    {animalStages.map((s, i) => (
+                      <div key={s.label} className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all"
+                        style={activeStageAnimal === i ? activeCard : inactiveCard}>
+                        <span className="text-2xl">{animalStagesForType[activeAnimal][i]}</span>
+                        <span className="text-xs font-semibold" style={{ color: activeStageAnimal === i ? "#3DDB87" : "var(--text-muted)" }}>
+                          {s.label}
+                        </span>
+                        <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{s.subLabel}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="rounded-xl p-4" style={{ background: "var(--bg-subtle, rgba(255,255,255,0.04))", border: "1px solid var(--border-card)" }}>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm" style={{ color: "var(--text-secondary)" }}>연속 기록</span>
+                      <span className="text-brand text-sm font-semibold">🔥 7일 연속</span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: "var(--border-card)" }}>
+                      <motion.div className="h-full rounded-full"
+                        style={{ background: "linear-gradient(90deg, #3DDB87, rgba(61,219,135,0.5))" }}
+                        initial={{ width: 0 }}
+                        animate={{ width: "33%" }}
+                        transition={{ duration: 1.0, ease: "easeOut" }}
+                      />
+                    </div>
+                    <p className="text-xs" style={{ color: "var(--text-muted)" }}>성체까지 14일 더 분석하면 돼요 🐾</p>
+                  </div>
+                </>
+              )}
             </div>
           </motion.div>
 
@@ -500,11 +579,12 @@ function CompanionSection({ ctaHref }: { ctaHref: string }) {
             <span className="text-brand text-xs font-bold tracking-widest uppercase mb-4 block">
               반려식물 &amp; 반려동물
             </span>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.08] mb-6 text-[#0A0A0F] dark:text-white">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.08] mb-6"
+              style={{ color: "var(--text-primary)" }}>
               화면을 끌수록<br />
               <span className="text-gradient">자라는 나만의 반려</span>
             </h2>
-            <p className="text-black/50 dark:text-white/50 text-base leading-relaxed mb-8 max-w-md">
+            <p className="text-base leading-relaxed mb-8 max-w-md" style={{ color: "var(--text-secondary)" }}>
               스마트폰을 내려놓은 시간만큼 반려 식물과 동물이 성장합니다.
               꾸준히 디톡스를 지속하면 더 희귀한 모습으로 진화해요.
             </p>
@@ -513,17 +593,15 @@ function CompanionSection({ ctaHref }: { ctaHref: string }) {
                 "디톡스 시간에 따라 단계적 성장",
                 "반려식물·반려동물 중 선택",
                 "희귀 진화 형태 잠금 해제",
-                "성장 일지 & 히스토리 기록",
+                "매일 AI 분석으로 연속 기록 쌓기",
               ].map((item) => (
-                <li key={item} className="flex items-center gap-3 text-black/60 dark:text-white/70 text-sm">
+                <li key={item} className="flex items-center gap-3 text-sm" style={{ color: "var(--text-secondary)" }}>
                   <IconCheck /> {item}
                 </li>
               ))}
             </ul>
-            <Link
-              href={ctaHref}
-              className="inline-flex items-center gap-2 border border-brand/40 text-brand px-6 py-3 rounded-full hover:bg-brand/10 transition-all text-sm font-semibold"
-            >
+            <Link href={ctaHref}
+              className="inline-flex items-center gap-2 border border-brand/40 text-brand px-6 py-3 rounded-full hover:bg-brand/10 transition-all text-sm font-semibold">
               반려 키우기 시작 <IconArrow />
             </Link>
           </motion.div>
@@ -536,7 +614,7 @@ function CompanionSection({ ctaHref }: { ctaHref: string }) {
 /* ── 부가 기능 그리드 ── */
 const subFeatures = [
   { emoji: "🏅", title: "뱃지 & 칭호", desc: "목표를 달성하면 뱃지와 칭호를 획득합니다. 인스타그램 스토리로 공유해 성과를 자랑하세요." },
-  { emoji: "🎯", title: "목표 설정", desc: "하루·주간 스크린타임 목표를 직접 설정하고, 달성률과 스트릭(연속 달성)을 추적하세요." },
+  { emoji: "🎯", title: "목표 설정", desc: "하루·주간 스크린타임 목표를 직접 설정하고, 달성률과 연속 달성 기록을 추적하세요." },
   { emoji: "📊", title: "분석 히스토리", desc: "과거 분석 기록을 한눈에 확인하고 내 디지털 습관이 어떻게 변화했는지 추이를 살펴보세요." },
   { emoji: "🔒", title: "개인정보 보호", desc: "업로드한 스크린샷은 AI 분석 즉시 삭제됩니다. 내 데이터는 오직 나만 볼 수 있어요." },
 ];

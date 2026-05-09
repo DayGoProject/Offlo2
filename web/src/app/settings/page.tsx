@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { updateProfile } from "firebase/auth";
+import {
+  updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  deleteUser,
+} from "firebase/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/services/auth";
 import { useTheme } from "@/context/ThemeContext";
@@ -35,7 +41,21 @@ export default function SettingsPage() {
   const [displayName, setDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
-  const [error, setError] = useState("");
+  const [nameError, setNameError] = useState("");
+
+  /* 비밀번호 변경 상태 */
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState("");
+  const [pwError, setPwError] = useState("");
+
+  /* 회원 탈퇴 상태 */
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteReauth, setDeleteReauth] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteSection, setShowDeleteSection] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -49,16 +69,16 @@ export default function SettingsPage() {
 
   const initials = (user.displayName ?? user.email ?? "?").charAt(0).toUpperCase();
   const isGoogle = user.providerData.some((p) => p.providerId === "google.com");
+  const isEmailUser = user.providerData.some((p) => p.providerId === "password");
 
   async function handleSaveName(e: React.FormEvent) {
     e.preventDefault();
     if (!displayName.trim() || displayName.trim() === user!.displayName) return;
     setSaving(true);
-    setError("");
+    setNameError("");
     setSavedMsg("");
     try {
       await updateProfile(user!, { displayName: displayName.trim() });
-      /* Supabase name도 동기화 */
       const token = await user!.getIdToken();
       await fetch("/api/users", {
         method: "POST",
@@ -67,9 +87,71 @@ export default function SettingsPage() {
       });
       setSavedMsg("이름이 저장됐습니다.");
     } catch {
-      setError("저장 중 오류가 발생했습니다. 다시 시도해주세요.");
+      setNameError("저장 중 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleChangePw(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user?.email) return;
+    setPwError("");
+    setPwMsg("");
+    if (newPw.length < 8) {
+      setPwError("새 비밀번호는 8자 이상이어야 합니다.");
+      return;
+    }
+    if (newPw !== confirmPw) {
+      setPwError("새 비밀번호가 일치하지 않습니다.");
+      return;
+    }
+    setPwSaving(true);
+    try {
+      const cred = EmailAuthProvider.credential(user.email, currentPw);
+      await reauthenticateWithCredential(user, cred);
+      await updatePassword(user, newPw);
+      setPwMsg("비밀번호가 변경됐습니다.");
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code;
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        setPwError("현재 비밀번호가 올바르지 않습니다.");
+      } else {
+        setPwError("비밀번호 변경 중 오류가 발생했습니다.");
+      }
+    } finally {
+      setPwSaving(false);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (!user) return;
+    if (deleteConfirm !== "계정 삭제") return;
+    setDeleting(true);
+    try {
+      /* 이메일 유저는 재인증 필요 */
+      if (isEmailUser && user.email) {
+        const cred = EmailAuthProvider.credential(user.email, deleteReauth);
+        await reauthenticateWithCredential(user, cred);
+      }
+      /* Supabase + Firestore 삭제 */
+      const token = await user.getIdToken();
+      await fetch("/api/users/me", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      /* Firebase Auth 삭제 */
+      await deleteUser(user);
+      router.replace("/");
+    } catch (err: unknown) {
+      const code = (err as { code?: string }).code;
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        alert("비밀번호가 올바르지 않습니다.");
+      } else {
+        alert("계정 삭제 중 오류가 발생했습니다. 다시 시도해주세요.");
+      }
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -88,11 +170,9 @@ export default function SettingsPage() {
           className="flex items-center px-7 py-5 border-b"
           style={{ borderColor: "var(--border-card)" }}
         >
-          <div>
-            <h1 className="text-xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              설정
-            </h1>
-          </div>
+          <h1 className="text-xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
+            설정
+          </h1>
         </div>
 
         <div className="p-6 flex-1 max-w-xl space-y-6">
@@ -137,7 +217,7 @@ export default function SettingsPage() {
                     onChange={(e) => setDisplayName(e.target.value)}
                     maxLength={100}
                     placeholder="이름을 입력하세요"
-                    className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-colors"
+                    className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
                     style={{
                       background: "var(--bg-subtle)",
                       border: "1px solid var(--border-card)",
@@ -146,9 +226,9 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                {error && (
+                {nameError && (
                   <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
-                    {error}
+                    {nameError}
                   </p>
                 )}
                 {savedMsg && (
@@ -168,6 +248,60 @@ export default function SettingsPage() {
               </form>
             </Card>
           </div>
+
+          {/* 비밀번호 변경 (이메일 유저만) */}
+          {isEmailUser && (
+            <div>
+              <SectionTitle>비밀번호 변경</SectionTitle>
+              <Card>
+                <form onSubmit={handleChangePw} className="space-y-3">
+                  {[
+                    { label: "현재 비밀번호", val: currentPw, set: setCurrentPw, ph: "현재 비밀번호" },
+                    { label: "새 비밀번호",   val: newPw,     set: setNewPw,     ph: "8자 이상" },
+                    { label: "새 비밀번호 확인", val: confirmPw, set: setConfirmPw, ph: "새 비밀번호 다시 입력" },
+                  ].map(({ label, val, set, ph }) => (
+                    <div key={label}>
+                      <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
+                        {label}
+                      </label>
+                      <input
+                        type="password"
+                        value={val}
+                        onChange={(e) => set(e.target.value)}
+                        placeholder={ph}
+                        className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                        style={{
+                          background: "var(--bg-subtle)",
+                          border: "1px solid var(--border-card)",
+                          color: "var(--text-primary)",
+                        }}
+                      />
+                    </div>
+                  ))}
+
+                  {pwError && (
+                    <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
+                      {pwError}
+                    </p>
+                  )}
+                  {pwMsg && (
+                    <p className="text-xs text-brand bg-brand/10 border border-brand/20 rounded-lg px-3 py-2">
+                      {pwMsg}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={pwSaving || !currentPw || !newPw || !confirmPw}
+                    className="text-sm font-bold py-2 px-5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-40"
+                    style={{ background: "#3DDB87", color: "#0A0A0F" }}
+                  >
+                    {pwSaving ? "변경 중..." : "비밀번호 변경"}
+                  </button>
+                </form>
+              </Card>
+            </div>
+          )}
 
           {/* 화면 */}
           <div>
@@ -212,7 +346,7 @@ export default function SettingsPage() {
           {/* 계정 */}
           <div>
             <SectionTitle>계정</SectionTitle>
-            <Card>
+            <Card className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>로그아웃</p>
@@ -227,6 +361,86 @@ export default function SettingsPage() {
                 >
                   로그아웃
                 </button>
+              </div>
+
+              <div className="w-full h-px" style={{ background: "var(--border-card)" }} />
+
+              {/* 회원 탈퇴 */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-red-400">회원 탈퇴</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                      모든 데이터가 영구적으로 삭제됩니다.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowDeleteSection((v) => !v)}
+                    className="text-sm font-bold py-2 px-4 rounded-full transition-opacity hover:opacity-80"
+                    style={{ background: "rgba(248,113,113,0.08)", color: "#f87171", border: "1px solid rgba(248,113,113,0.15)" }}
+                  >
+                    {showDeleteSection ? "취소" : "탈퇴하기"}
+                  </button>
+                </div>
+
+                {showDeleteSection && (
+                  <div className="mt-4 space-y-3 p-4 rounded-xl" style={{ background: "rgba(248,113,113,0.06)", border: "1px solid rgba(248,113,113,0.2)" }}>
+                    <p className="text-xs font-semibold text-red-400">
+                      ⚠️ 분석 기록, 배지, 목표, 정원 데이터가 모두 삭제되며 복구할 수 없습니다.
+                    </p>
+
+                    {isEmailUser && (
+                      <div>
+                        <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
+                          현재 비밀번호 확인
+                        </label>
+                        <input
+                          type="password"
+                          value={deleteReauth}
+                          onChange={(e) => setDeleteReauth(e.target.value)}
+                          placeholder="현재 비밀번호"
+                          className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                          style={{
+                            background: "var(--bg-subtle)",
+                            border: "1px solid rgba(248,113,113,0.3)",
+                            color: "var(--text-primary)",
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-xs font-medium mb-1.5 block" style={{ color: "var(--text-secondary)" }}>
+                        확인을 위해 <span className="font-bold text-red-400">계정 삭제</span>를 입력하세요
+                      </label>
+                      <input
+                        type="text"
+                        value={deleteConfirm}
+                        onChange={(e) => setDeleteConfirm(e.target.value)}
+                        placeholder="계정 삭제"
+                        className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                        style={{
+                          background: "var(--bg-subtle)",
+                          border: "1px solid rgba(248,113,113,0.3)",
+                          color: "var(--text-primary)",
+                        }}
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleDeleteAccount}
+                      disabled={
+                        deleting ||
+                        deleteConfirm !== "계정 삭제" ||
+                        (isEmailUser && !deleteReauth)
+                      }
+                      className="w-full text-sm font-bold py-2.5 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-40"
+                      style={{ background: "#f87171", color: "#fff" }}
+                    >
+                      {deleting ? "삭제 중..." : "영구 삭제"}
+                    </button>
+                  </div>
+                )}
               </div>
             </Card>
           </div>

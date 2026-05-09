@@ -4,19 +4,33 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /users/{userId} {
-      // 프로필 문서 (최상위)
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // 프로필 최상위 문서 — 읽기만 허용, 쓰기는 Admin SDK 전용
+      // (프로필 데이터는 Supabase로 이전 완료, Firestore 직접 쓰기 불필요)
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
 
-      // garden, notifications 등 허용된 서브컬렉션만 명시
-      // 와일드카드 규칙으로 analyses 쓰기 차단이 우회되는 것을 방지
-      match /garden/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+      // garden/plant — 읽기만 허용
+      // 쓰기: POST /api/garden/plant-exp (Admin SDK FieldValue.increment)
+      //       Chrome 확장도 API Route 경유로만 적립
+      match /garden/plant {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
       }
+
+      // garden/animal — 읽기만 허용
+      // 쓰기: POST /api/garden/animal (Admin SDK)
+      //       동물 선택·변경·스트릭 모두 서버 경유
+      match /garden/animal {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if false;
+      }
+
+      // notifications — 읽기/쓰기 허용 (10단계 알림 시스템용)
       match /notifications/{docId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
 
-      // analyses는 읽기만 허용 — 쓰기는 Cloud Function(Admin SDK)만
+      // analyses — 읽기만 허용, 쓰기는 Cloud Function(Admin SDK)만
       match /analyses/{analysisId} {
         allow read: if request.auth != null && request.auth.uid == userId;
         allow write: if false;
