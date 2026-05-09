@@ -23,7 +23,16 @@ export default function SignupPage() {
     setError("");
     setGoogleLoading(true);
     try {
-      await signInWithGoogle();
+      const credential = await signInWithGoogle();
+      const token = await credential.user.getIdToken();
+      await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          email: credential.user.email ?? "",
+          name: credential.user.displayName ?? credential.user.email ?? "",
+        }),
+      });
       router.push("/");
     } catch (err: unknown) {
       const code = getFirebaseErrorCode(err);
@@ -47,6 +56,15 @@ export default function SignupPage() {
       if (displayName.trim()) {
         await updateProfile(credential.user, { displayName: displayName.trim() });
       }
+      const token = await credential.user.getIdToken();
+      await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          email: credential.user.email ?? email,
+          name: displayName.trim() || email,
+        }),
+      });
       await sendVerificationEmail();
       setSentEmail(email);
       await logout();

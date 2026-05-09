@@ -25,6 +25,15 @@ export default function LoginPage() {
         setError(getAuthErrorMessage("no-account"));
         return;
       }
+      const token = await result.user.getIdToken();
+      await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          email: result.user.email ?? "",
+          name: result.user.displayName ?? result.user.email ?? "",
+        }),
+      });
       router.push("/");
     } catch (err: unknown) {
       const code = getFirebaseErrorCode(err);
@@ -46,6 +55,15 @@ export default function LoginPage() {
         setError("이메일 인증이 완료되지 않았습니다. 받은 편지함을 확인해주세요.");
         return;
       }
+      const token = await credential.user.getIdToken();
+      await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          email: credential.user.email ?? email,
+          name: credential.user.displayName ?? email,
+        }),
+      });
       router.push("/");
     } catch (err: unknown) {
       setError(getAuthErrorMessage(getFirebaseErrorCode(err)));
