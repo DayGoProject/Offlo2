@@ -1,5 +1,6 @@
 import { verifyIdToken, apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
+import { onGoalCompleted } from "@/lib/garden";
 
 /* ── PATCH /api/goals/[id] — 목표 수정 ─────────────────────── */
 
@@ -50,6 +51,12 @@ export async function PATCH(
     if (Object.keys(data).length === 0) throw apiError("수정할 필드가 없습니다.", 400);
 
     const updated = await prisma.goal.update({ where: { id }, data });
+
+    // 목표가 완료 처리된 경우 게이미피케이션
+    if (data.status === "completed") {
+      onGoalCompleted(uid, user.id).catch(console.error);
+    }
+
     return Response.json({ goal: updated });
   } catch (e) {
     return handleApiError(e);

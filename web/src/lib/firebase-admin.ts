@@ -13,6 +13,10 @@ function getAdminApp(): admin.app.App {
   });
 }
 
+export function getAdminFirestore(): admin.firestore.Firestore {
+  return getAdminApp().firestore();
+}
+
 /* ── Firebase ID Token 검증 → uid 반환 ─────────────────────── */
 
 /**

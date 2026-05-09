@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/services/auth";
 import { db } from "@/services/firebase";
 import AppSidebar from "@/components/AppSidebar";
+import { getPlantLevel, getAnimalStage, getAnimalEmoji, type AnimalTypeId } from "@/lib/garden";
 
 /* ── 타입 ─────────────────────────────────────────────────────── */
 
@@ -157,6 +158,7 @@ export default function DashboardPage() {
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [detoxMin, setDetoxMin] = useState<number | null>(null);
+  const [animalData, setAnimalData] = useState<{ type: AnimalTypeId | null; streak: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -180,19 +182,28 @@ export default function DashboardPage() {
     (async () => {
       const token = await user.getIdToken();
       const h = { Authorization: `Bearer ${token}` };
-      const [aRes, gRes, snap] = await Promise.all([
+      const [aRes, gRes, plantSnap, animalSnap] = await Promise.all([
         fetch("/api/analyses?limit=10", { headers: h }),
         fetch("/api/goals?status=active", { headers: h }),
         getDoc(doc(db, "users", user.uid, "garden", "plant")),
+        getDoc(doc(db, "users", user.uid, "garden", "animal")),
       ]);
       if (aRes.ok) setAnalyses((await aRes.json()).analyses ?? []);
       if (gRes.ok) setGoals((await gRes.json()).goals ?? []);
-      setDetoxMin(snap.exists() ? (snap.data()?.totalDetoxMinutes ?? 0) : 0);
+      setDetoxMin(plantSnap.exists() ? (plantSnap.data()?.totalDetoxMinutes ?? 0) : 0);
+      if (animalSnap.exists()) {
+        const d = animalSnap.data();
+        setAnimalData({ type: d.type ?? null, streak: d.streak ?? 0 });
+      }
       setLoading(false);
     })();
   }, [user]);
 
   if (authLoading || !user) return null;
+
+  const plantLevel = getPlantLevel(detoxMin ?? 0);
+  const animalEmoji = animalData ? getAnimalEmoji(animalData.type, animalData.streak) : "🥚";
+  const animalStage = getAnimalStage(animalData?.streak ?? 0);
 
   const latest = analyses[0] ?? null;
   const latestDaily = analyses.find((a) => a.periodType === "daily") ?? null;
@@ -442,8 +453,8 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* 2행: 디톡스 게이지 | 활성 목표 */}
-          <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 272px" }}>
+          {/* 2행: 디톡스 게이지 | 활성 목표 | 정원 */}
+          <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 272px 220px" }}>
 
             {/* 누적 디톡스 — 게이지 + 통계 */}
             <Card>
@@ -521,6 +532,42 @@ export default function DashboardPage() {
                 style={{ border: "1px solid rgba(61,219,135,0.25)" }}>
                 목표 관리하기
               </Link>
+            </Card>
+
+            {/* 정원 미니 위젯 */}
+            <Card className="flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>정원</h3>
+                <Link href="/garden" className="text-xs font-semibold text-brand hover:opacity-70 transition-opacity">
+                  정원 보기 →
+                </Link>
+              </div>
+
+              <div className="flex-1 flex flex-col items-center justify-center gap-4 py-2">
+                {/* 식물 */}
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-4xl">{plantLevel.emoji}</span>
+                  <p className="text-xs font-bold text-brand">Lv.{plantLevel.level} {plantLevel.name}</p>
+                  <p className="text-xs" style={{ color: "var(--text-muted)" }}>{fmt(detoxMin ?? 0)} 적립</p>
+                </div>
+
+                <div className="w-full h-px" style={{ background: "var(--border-card)" }} />
+
+                {/* 동물 */}
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-4xl">{animalEmoji}</span>
+                  {animalData?.type ? (
+                    <>
+                      <p className="text-xs font-bold text-brand">{animalStage.name}</p>
+                      <p className="text-xs" style={{ color: "var(--text-muted)" }}>🔥 {animalData.streak}일 연속</p>
+                    </>
+                  ) : (
+                    <Link href="/garden" className="text-xs font-semibold text-brand hover:opacity-70 transition-opacity">
+                      동물 선택하기 →
+                    </Link>
+                  )}
+                </div>
+              </div>
             </Card>
           </div>
         </div>

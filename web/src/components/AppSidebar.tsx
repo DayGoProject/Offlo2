@@ -43,6 +43,16 @@ const NAV = [
     ),
   },
   {
+    href: "/garden",
+    label: "정원",
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22V12" /><path d="M5 3a7 7 0 0 0 7 7 7 7 0 0 0 7-7" />
+        <path d="M5 14a6 6 0 0 0 6 6" /><path d="M19 14a6 6 0 0 1-6 6" />
+      </svg>
+    ),
+  },
+  {
     href: "/badges",
     label: "배지",
     icon: (

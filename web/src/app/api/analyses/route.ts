@@ -1,5 +1,6 @@
 import { verifyIdTokenFull, apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
+import { onAnalysisComplete } from "@/lib/garden";
 
 /* ── GET /api/analyses — 내 분석 목록 조회 ─────────────────── */
 
@@ -96,6 +97,10 @@ export async function POST(req: Request): Promise<Response> {
         isPremium,
       },
     });
+
+    // 게이미피케이션 — 실패해도 메인 응답에 영향 없음
+    const totalAnalyses = await prisma.analysis.count({ where: { userId: user.id } });
+    onAnalysisComplete(uid, user.id, d.periodType, totalAnalyses).catch(console.error);
 
     return Response.json({ analysisId: analysis.id }, { status: 201 });
   } catch (e) {
