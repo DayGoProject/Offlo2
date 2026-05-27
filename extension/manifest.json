@@ -1,6 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Offlo",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtVu5l/fcRC6KKsqNiLbh+HFxZnaNdXRkMoW2BtSx8z3uBd3wlb4x4A4COaWKRrv2mvI9C3scXpNjF0RRzJ6szU+TGnJy3uxyerkvgs8/wlbGZBMr3GR4fJPDheIITkIDJG758EKbVZNWBhU0mpwJ4nO7Dx+wEuO0VPxz2ZFSeBPJK6SIkQpgEWh8mN1vrH3OOAWV7L8lKoo/Xt1IeQwbHp2OTuGBdwiiUJdiZ16pT0lSHYA9hXhYlUGc4F3akOaGsLf7Qyy1E/Gu8DUUPO/iw5cK3vhnDfBR69t8PPjoFnLD27XCngGG0gp84x0rfTMgzjs1rl4Wzr0zgucned/EawIDAQAB",
   "version": "0.1.0",
   "description": "디지털 디톡스 파트너 — 웹 사용 시간 자동 추적",
   "permissions": [
