@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { doc, getDoc } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
-import Lottie from "lottie-react";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/services/firebase";
 import AppSidebar from "@/components/AppSidebar";
+
+const Animal3D = dynamic(() => import("@/components/garden/Animal3D"), { ssr: false });
 import {
   PLANT_LEVELS, ANIMAL_TYPES, ANIMAL_STAGES,
   getPlantLevel, nextPlantLevel, getAnimalStage, getAnimalEmoji,
@@ -123,77 +125,6 @@ function FarmBackground({ isHungry }: { isHungry: boolean }) {
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-/* ── Lottie or 이모지 동물 ─────────────────────────────────── */
-
-function FarmAnimal({
-  typeId, emoji, isHappy, isHungry, onClick,
-}: {
-  typeId: AnimalTypeId | null;
-  emoji: string;
-  isHappy: boolean;
-  isHungry: boolean;
-  onClick: () => void;
-}) {
-  const [lottieData, setLottieData] = useState<object | null>(null);
-  const [lottieChecked, setLottieChecked] = useState(false);
-
-  useEffect(() => {
-    if (!typeId) { setLottieChecked(true); return; }
-    fetch(`/lottie/${typeId}.json`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { setLottieData(data); setLottieChecked(true); })
-      .catch(() => setLottieChecked(true));
-  }, [typeId]);
-
-  const animateProps = isHappy
-    ? { scale: [1, 1.25, 0.9, 1.1, 1], rotate: [0, -18, 18, -6, 0] }
-    : isHungry
-    ? { x: [-4, 4, -4, 4, 0] }
-    : { y: [0, -14, 0] };
-
-  const transitionProps = isHappy
-    ? { duration: 0.55 }
-    : isHungry
-    ? { repeat: Infinity, duration: 1.2, ease: "easeInOut" as const }
-    : { repeat: Infinity, duration: 2.8, ease: "easeInOut" as const };
-
-  if (!lottieChecked) return null;
-
-  return (
-    <motion.div
-      className="relative cursor-pointer select-none"
-      onClick={onClick}
-      animate={animateProps}
-      transition={transitionProps}
-      style={{ filter: isHungry ? "saturate(0.45) brightness(0.85)" : "none" }}
-      whileHover={{ scale: 1.06 }}
-    >
-      {lottieData ? (
-        <Lottie animationData={lottieData} loop style={{ width: 180, height: 180 }} />
-      ) : (
-        <span style={{ fontSize: "100px", lineHeight: 1 }}>{emoji}</span>
-      )}
-
-      {/* 하트 이펙트 */}
-      <AnimatePresence>
-        {isHappy && (
-          <motion.div
-            key="heart"
-            className="absolute text-2xl"
-            style={{ top: "-16px", left: "50%", transform: "translateX(-50%)" }}
-            initial={{ opacity: 0, y: 0, scale: 0.5 }}
-            animate={{ opacity: [0, 1, 0], y: -30, scale: 1.2 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.7 }}
-          >
-            ❤️
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
   );
 }
 
@@ -313,7 +244,7 @@ function ChangeAnimalModal({
 /* ── 농장 패널 ─────────────────────────────────────────────── */
 
 function FarmPanel({
-  animal, animalEmoji, animalStage, effectiveStreak, isHungry, hasEverAnalyzed, sinceLastAnalysis,
+  animal, animalEmoji, animalStage, effectiveStreak, isHungry,
   selectingAnimal, setSelectingAnimal, selectAnimalType,
 }: {
   animal: AnimalData;
@@ -321,20 +252,11 @@ function FarmPanel({
   animalStage: typeof ANIMAL_STAGES[number];
   effectiveStreak: number;
   isHungry: boolean;
-  hasEverAnalyzed: boolean;
-  sinceLastAnalysis: number;
   selectingAnimal: boolean;
   setSelectingAnimal: (v: boolean) => void;
   selectAnimalType: (id: AnimalTypeId, reset: boolean) => void;
 }) {
-  const [isHappy, setIsHappy] = useState(false);
   const [pendingAnimal, setPendingAnimal] = useState<typeof ANIMAL_TYPES[number] | null>(null);
-
-  const handlePet = useCallback(() => {
-    if (isHappy || !animal.type) return;
-    setIsHappy(true);
-    setTimeout(() => setIsHappy(false), 700);
-  }, [isHappy, animal.type]);
 
   function handleSelectRequest(typeId: AnimalTypeId) {
     const target = ANIMAL_TYPES.find((t) => t.id === typeId)!;
@@ -378,134 +300,95 @@ function FarmPanel({
         )}
       </AnimatePresence>
 
-    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border-card)" }}>
-      {/* 농장 장면 */}
-      <div className="relative" style={{ height: "320px" }}>
-        <FarmBackground isHungry={isHungry && !!animal.type && !selectingAnimal} />
-
-        {/* 동물 선택 UI */}
-        {(!animal.type || selectingAnimal) ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 z-10">
-            <div className="px-5 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: "rgba(0,0,0,0.55)", color: "#fff", backdropFilter: "blur(8px)" }}>
-              함께할 동물을 선택하세요
-            </div>
-            <div className="flex gap-4">
-              {ANIMAL_TYPES.map((t) => (
-                <motion.button
-                  key={t.id}
-                  onClick={() => handleSelectRequest(t.id)}
-                  whileHover={{ scale: 1.08, y: -4 }}
-                  whileTap={{ scale: 0.96 }}
-                  className="flex flex-col items-center gap-2 px-6 py-4 rounded-2xl"
-                  style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(10px)" }}
-                >
-                  <span className="text-5xl">{t.emoji}</span>
-                  <span className="text-xs font-semibold text-white">{t.name}</span>
-                </motion.button>
-              ))}
-            </div>
-            {animal.type && (
-              <button onClick={() => setSelectingAnimal(false)}
-                className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-                취소
-              </button>
-            )}
-          </div>
-        ) : (
-          /* 동물 */
-          <div className="absolute inset-0 flex items-center justify-center z-10" style={{ paddingBottom: "60px" }}>
-            <div className="flex flex-col items-center gap-0">
-              <FarmAnimal
-                typeId={animal.type}
-                emoji={animalEmoji}
-                isHappy={isHappy}
-                isHungry={isHungry}
-                onClick={handlePet}
-              />
-              <p className="text-xs font-semibold" style={{ color: "rgba(255,255,255,0.55)", marginTop: "-4px" }}>
-                탭해서 쓰다듬기
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* 이름 + 스트릭 배지 (우상단) */}
-        {animal.type && !selectingAnimal && (
-          <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5">
-            <div className="px-3 py-1 rounded-full text-xs font-bold"
-              style={{ background: "rgba(0,0,0,0.55)", color: "#3DDB87", backdropFilter: "blur(8px)" }}>
-              {animalTypeName} · {animalStage.name}
-            </div>
-            <div className="px-3 py-1 rounded-full text-xs font-bold"
-              style={{ background: "rgba(0,0,0,0.55)", color: "#fff", backdropFilter: "blur(8px)" }}>
-              🔥 {effectiveStreak}일 연속
-            </div>
-          </div>
-        )}
-
-        {/* 3일+ 배고픔 → 리셋 경고 */}
-        {animal.type && !selectingAnimal && hasEverAnalyzed && sinceLastAnalysis >= 3 && (
-          <motion.div
-            className="absolute bottom-28 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap z-10"
-            style={{ background: "rgba(239,68,68,0.9)", color: "#fff" }}
-            animate={{ scale: [1, 1.04, 1] }}
-            transition={{ repeat: Infinity, duration: 1.2 }}
-          >
-            😢 연속 기록이 끊겼어요!
-          </motion.div>
-        )}
-      </div>
-
-      {/* 하단 정보 영역 */}
-      {animal.type && !selectingAnimal && (
-        <div className="px-5 py-4 space-y-3" style={{ background: "var(--bg-card)", borderTop: "1px solid var(--border-card)" }}>
-          {/* 스테이지 진행도 */}
-          {nextStage && (
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs" style={{ color: "var(--text-muted)" }}>
-                <span>{animalStage.name}</span>
-                <span>다음 단계까지 {nextStage.minStreak - effectiveStreak}일</span>
+      {/* 동물 미선택 / 변경 중 → 기존 농장 선택 UI */}
+      {(!animal.type || selectingAnimal) && (
+        <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--border-card)" }}>
+          <div className="relative" style={{ height: "300px" }}>
+            <FarmBackground isHungry={false} />
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 z-10">
+              <div className="px-5 py-2 rounded-xl text-sm font-semibold"
+                style={{ background: "rgba(0,0,0,0.55)", color: "#fff", backdropFilter: "blur(8px)" }}>
+                함께할 동물을 선택하세요
               </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{ background: "#3DDB87" }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${stageProgress}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                />
+              <div className="flex gap-4">
+                {ANIMAL_TYPES.map((t) => (
+                  <motion.button
+                    key={t.id}
+                    onClick={() => handleSelectRequest(t.id)}
+                    whileHover={{ scale: 1.08, y: -4 }}
+                    whileTap={{ scale: 0.96 }}
+                    className="flex flex-col items-center gap-2 px-6 py-4 rounded-2xl"
+                    style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(10px)" }}
+                  >
+                    <span className="text-5xl">{t.emoji}</span>
+                    <span className="text-xs font-semibold text-white">{t.name}</span>
+                  </motion.button>
+                ))}
               </div>
+              {animal.type && (
+                <button onClick={() => setSelectingAnimal(false)}
+                  className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  취소
+                </button>
+              )}
             </div>
-          )}
-
-          {/* 스테이지 로드맵 */}
-          <div className="flex items-center justify-between">
-            {ANIMAL_STAGES.map((s) => {
-              const reached = effectiveStreak >= s.minStreak;
-              return (
-                <div key={s.status} className="flex flex-col items-center gap-1">
-                  <span className="text-xs font-bold transition-all"
-                    style={{ color: reached ? "#3DDB87" : "var(--text-muted)" }}>
-                    {s.minStreak === 0 ? "시작" : `${s.minStreak}일`}
-                  </span>
-                  <div className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: reached ? "#3DDB87" : "rgba(255,255,255,0.12)" }} />
-                </div>
-              );
-            })}
           </div>
-
-          <button
-            onClick={() => setSelectingAnimal(true)}
-            className="w-full text-xs text-center py-1.5 rounded-lg transition-colors"
-            style={{ color: "var(--text-muted)" }}
-          >
-            동물 변경하기
-          </button>
         </div>
       )}
-    </div>
+
+      {/* 동물 선택됨 → Pet Room 카드 */}
+      {animal.type && !selectingAnimal && (
+        <>
+          <Animal3D
+            typeId={animal.type}
+            stage={animalStage}
+            isHungry={isHungry}
+            effectiveStreak={effectiveStreak}
+          />
+
+          {/* 단계 로드맵 + 변경 버튼 */}
+          <div className="mt-3 px-1 space-y-2">
+            {nextStage && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs" style={{ color: "var(--text-muted)" }}>
+                  <span>{animalStage.name}</span>
+                  <span>다음 단계까지 {nextStage.minStreak - effectiveStreak}일</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{ background: "#3DDB87" }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${stageProgress}%` }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              {ANIMAL_STAGES.map((s) => {
+                const reached = effectiveStreak >= s.minStreak;
+                return (
+                  <div key={s.status} className="flex flex-col items-center gap-1">
+                    <span className="text-xs font-bold" style={{ color: reached ? "#3DDB87" : "var(--text-muted)" }}>
+                      {s.minStreak === 0 ? "시작" : `${s.minStreak}일`}
+                    </span>
+                    <div className="w-1.5 h-1.5 rounded-full"
+                      style={{ background: reached ? "#3DDB87" : "rgba(255,255,255,0.12)" }} />
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setSelectingAnimal(true)}
+              className="w-full text-xs text-center py-1.5 rounded-lg"
+              style={{ color: "var(--text-muted)" }}
+            >
+              동물 변경하기
+            </button>
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -818,8 +701,6 @@ export default function GardenPage() {
                 animalStage={animalStage}
                 effectiveStreak={effectiveStreak}
                 isHungry={isHungry}
-                hasEverAnalyzed={hasEverAnalyzed}
-                sinceLastAnalysis={sinceLastAnalysis}
                 selectingAnimal={selectingAnimal}
                 setSelectingAnimal={setSelectingAnimal}
                 selectAnimalType={selectAnimalType}
