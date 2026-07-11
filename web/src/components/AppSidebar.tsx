@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { logout } from "@/services/auth";
+import NotificationCenter from "@/components/notifications/NotificationCenter";
 
 const NAV = [
   {
@@ -78,10 +79,11 @@ export default function AppSidebar() {
       className="fixed top-0 left-0 h-full w-56 flex flex-col z-40"
       style={{ background: "var(--bg-card)", borderRight: "1px solid var(--border-card)" }}
     >
-      <div className="px-6 pt-7 pb-6">
+      <div className="px-6 pt-7 pb-6 flex items-center justify-between">
         <Link href="/" className="text-gradient text-xl font-extrabold tracking-tight hover:opacity-80 transition-opacity">
           Offlo
         </Link>
+        <NotificationCenter />
       </div>
 
       <nav className="flex-1 px-3 space-y-0.5">

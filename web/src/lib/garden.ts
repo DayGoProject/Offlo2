@@ -1,6 +1,8 @@
 import * as admin from "firebase-admin";
 import { getAdminFirestore } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
+import { getPlantLevel } from "@/lib/garden-utils";
+import { notifyBadgeEarned, notifyPlantLevelUp } from "@/lib/notifications";
 
 /* 클라이언트 안전 유틸은 garden-utils.ts에서 관리 — 여기서 re-export */
 export {
@@ -21,6 +23,11 @@ function kstDateStr(offset = 0): string {
 export async function addPlantExp(uid: string, minutes: number): Promise<void> {
   const db = getAdminFirestore();
   const ref = db.doc(`users/${uid}/garden/plant`);
+
+  // 레벨업 감지를 위해 적립 전 누적치를 읽는다 (알림은 비필수 — 미세 레이스 허용)
+  const before = (await ref.get()).data()?.totalDetoxMinutes ?? 0;
+  const prevLevel = getPlantLevel(before);
+
   await ref.set(
     {
       totalDetoxMinutes: admin.firestore.FieldValue.increment(minutes),
@@ -28,6 +35,11 @@ export async function addPlantExp(uid: string, minutes: number): Promise<void> {
     },
     { merge: true }
   );
+
+  const nextLevel = getPlantLevel(before + minutes);
+  if (nextLevel.level > prevLevel.level) {
+    notifyPlantLevelUp(uid, nextLevel.name).catch(console.error);
+  }
 }
 
 /* ── 동물 스트릭 업데이트 (Admin SDK) ─────────────────────── */
@@ -60,9 +72,13 @@ export async function updateAnimalStreak(uid: string): Promise<number> {
 
 /* ── 배지 지급 (중복 방지) ────────────────────────────────── */
 
-export async function awardBadge(userId: string, name: string): Promise<void> {
+export async function awardBadge(userId: string, name: string, uid?: string): Promise<void> {
   const existing = await prisma.badge.findFirst({ where: { userId, name } });
-  if (!existing) await prisma.badge.create({ data: { userId, name } });
+  if (!existing) {
+    await prisma.badge.create({ data: { userId, name } });
+    // 신규 지급 시에만 알림 생성 (uid를 아는 경우)
+    if (uid) notifyBadgeEarned(uid, name).catch(console.error);
+  }
 }
 
 /* ── 분석 완료 시 게이미피케이션 처리 ─────────────────────── */
@@ -85,9 +101,9 @@ export async function onAnalysisComplete(
 
   // 배지 조건 체크
   const badges: Promise<void>[] = [];
-  if (totalAnalyses === 1) badges.push(awardBadge(userId, "첫 분석"));
-  if (periodType === "weekly") badges.push(awardBadge(userId, "주간 분석 완료"));
-  if (streak >= 7) badges.push(awardBadge(userId, "7일 연속"));
+  if (totalAnalyses === 1) badges.push(awardBadge(userId, "첫 분석", uid));
+  if (periodType === "weekly") badges.push(awardBadge(userId, "주간 분석 완료", uid));
+  if (streak >= 7) badges.push(awardBadge(userId, "7일 연속", uid));
   await Promise.all(badges);
 }
 
@@ -96,6 +112,6 @@ export async function onAnalysisComplete(
 export async function onGoalCompleted(uid: string, userId: string): Promise<void> {
   await Promise.all([
     addPlantExp(uid, 20),
-    awardBadge(userId, "목표 달성"),
+    awardBadge(userId, "목표 달성", uid),
   ]);
 }

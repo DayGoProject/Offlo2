@@ -25,9 +25,14 @@ service cloud.firestore {
         allow write: if false;
       }
 
-      // notifications — 읽기/쓰기 허용 (10단계 알림 시스템용)
+      // notifications — 읽기 허용, 생성/삭제는 서버(Admin SDK) 전용
+      // 쓰기: POST /api/notifications/* (Admin SDK)로만 생성
+      // 클라이언트는 읽음 처리(read 필드)만 update 가능
       match /notifications/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow update: if request.auth != null && request.auth.uid == userId
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        allow create, delete: if false;
       }
 
       // analyses — 읽기만 허용, 쓰기는 Cloud Function(Admin SDK)만
