@@ -13,7 +13,8 @@ type NotificationType =
   | "plant_levelup"
   | "goal_deadline"
   | "pet_hungry"
-  | "daily_reminder";
+  | "daily_reminder"
+  | "post_comment";
 
 interface NotificationItem {
   id: string;
@@ -33,6 +34,7 @@ const TYPE_EMOJI: Record<NotificationType, string> = {
   goal_deadline: "🎯",
   pet_hungry: "🍽️",
   daily_reminder: "⏰",
+  post_comment: "💬",
 };
 
 function relTime(iso: string): string {

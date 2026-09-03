@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import AppSidebar from "@/components/AppSidebar";
+import { ALL_BADGES, getBadgeEmoji } from "@/lib/badge-utils";
+import { shareBadge, MAX_POST_LENGTH } from "@/services/community";
 
 interface Badge {
   id: string;
@@ -12,13 +14,6 @@ interface Badge {
   shared: boolean;
 }
 
-/* 획득 가능한 모든 배지 정의 */
-const ALL_BADGES: { name: string; emoji: string; description: string }[] = [
-  { name: "첫 분석",      emoji: "🔍", description: "처음으로 AI 스크린타임 분석을 완료했어요." },
-  { name: "주간 분석 완료", emoji: "📊", description: "일간 분석 7회를 완료해 주간 분석을 생성했어요." },
-  { name: "7일 연속",     emoji: "🔥", description: "7일 연속으로 AI 분석을 완료했어요." },
-  { name: "목표 달성",    emoji: "🎯", description: "설정한 디지털 디톡스 목표를 달성했어요." },
-];
 
 function fmtDate(iso: string): string {
   const d = new Date(iso);
@@ -41,6 +36,31 @@ export default function BadgesPage() {
   const router = useRouter();
   const [badges, setBadges] = useState<Badge[]>([]);
   const [loading, setLoading] = useState(true);
+
+  /* 배지 자랑하기 (11단계) */
+  const [shareTarget, setShareTarget] = useState<Badge | null>(null);
+  const [shareMsg, setShareMsg] = useState("");
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState("");
+
+  async function handleShare() {
+    if (!shareTarget || sharing) return;
+    setSharing(true);
+    setShareError("");
+    try {
+      await shareBadge(shareTarget.id, shareMsg.trim());
+      setBadges((prev) =>
+        prev.map((b) => (b.id === shareTarget.id ? { ...b, shared: true } : b))
+      );
+      setShareTarget(null);
+      setShareMsg("");
+      router.push("/community");
+    } catch (e) {
+      setShareError(e instanceof Error ? e.message : "공유하지 못했습니다.");
+    } finally {
+      setSharing(false);
+    }
+  }
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -125,6 +145,23 @@ export default function BadgesPage() {
                           {fmtDate(badge.earnedAt)}
                         </p>
                       </div>
+
+                      <button
+                        onClick={() => {
+                          setShareTarget(badge);
+                          setShareMsg("");
+                          setShareError("");
+                        }}
+                        disabled={badge.shared}
+                        className="mt-auto px-3.5 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-45"
+                        style={{
+                          background: badge.shared ? "var(--bg-subtle)" : "rgba(61,219,135,0.10)",
+                          border: `1px solid ${badge.shared ? "var(--border-card)" : "rgba(61,219,135,0.25)"}`,
+                          color: badge.shared ? "var(--text-muted)" : "#3DDB87",
+                        }}
+                      >
+                        {badge.shared ? "공유함" : "자랑하기"}
+                      </button>
                     </Card>
                   );
                 })}
@@ -173,6 +210,83 @@ export default function BadgesPage() {
           )}
         </div>
       </div>
+
+      {/* ── 배지 자랑하기 모달 ── */}
+      {shareTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-6"
+          style={{ background: "rgba(0,0,0,0.55)" }}
+          onClick={() => setShareTarget(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-6"
+            style={{
+              background: "var(--bg-card)",
+              border: "1px solid var(--border-card)",
+              boxShadow: "var(--shadow-card)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-extrabold" style={{ color: "var(--text-primary)" }}>
+                배지 자랑하기
+              </h2>
+              <button
+                onClick={() => setShareTarget(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-sm transition-colors hover:bg-white/[0.06]"
+                style={{ color: "var(--text-muted)" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div
+              className="flex items-center gap-3 rounded-xl px-4 py-3 mb-4"
+              style={{ background: "rgba(61,219,135,0.08)", border: "1px solid rgba(61,219,135,0.2)" }}
+            >
+              <span className="text-2xl">{getBadgeEmoji(shareTarget.name)}</span>
+              <div>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>커뮤니티에 공유할 배지</p>
+                <p className="text-sm font-bold" style={{ color: "#3DDB87" }}>{shareTarget.name}</p>
+              </div>
+            </div>
+
+            <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
+              한마디 (선택)
+            </label>
+            <textarea
+              value={shareMsg}
+              onChange={(e) => setShareMsg(e.target.value)}
+              maxLength={MAX_POST_LENGTH}
+              rows={3}
+              placeholder="예: 드디어 7일 연속 달성했어요!"
+              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
+              style={{
+                background: "var(--bg-subtle)",
+                border: "1px solid var(--border-card)",
+                color: "var(--text-primary)",
+              }}
+            />
+
+            <p className="text-xs mt-2" style={{ color: "var(--text-faint)" }}>
+              커뮤니티 피드에 이름과 함께 공개됩니다.
+            </p>
+
+            {shareError && (
+              <p className="mt-2 text-xs" style={{ color: "#f87171" }}>{shareError}</p>
+            )}
+
+            <button
+              onClick={handleShare}
+              disabled={sharing}
+              className="mt-5 w-full py-3 rounded-xl text-sm font-bold transition-opacity hover:opacity-85 disabled:opacity-50"
+              style={{ background: "#3DDB87", color: "#0A0A0F" }}
+            >
+              {sharing ? "공유 중…" : "커뮤니티에 공유"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

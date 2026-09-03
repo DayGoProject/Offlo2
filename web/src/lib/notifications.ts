@@ -10,7 +10,8 @@ export type NotificationType =
   | "plant_levelup"
   | "goal_deadline"
   | "pet_hungry"
-  | "daily_reminder";
+  | "daily_reminder"
+  | "post_comment";
 
 export interface NotificationInput {
   type: NotificationType;
@@ -49,5 +50,18 @@ export function notifyPlantLevelUp(uid: string, levelName: string): Promise<void
     title: "반려 식물이 성장했어요 🌱",
     body: `식물이 '${levelName}' 단계로 자랐어요!`,
     link: "/garden",
+  });
+}
+
+export function notifyPostComment(
+  uid: string,
+  commenterName: string,
+  postId: string
+): Promise<void> {
+  return createNotification(uid, {
+    type: "post_comment",
+    title: "새 댓글이 달렸어요 💬",
+    body: `${commenterName}님이 회원님의 글에 댓글을 남겼어요.`,
+    link: `/community?post=${postId}`,
   });
 }
