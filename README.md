@@ -59,12 +59,12 @@
 |------|------|
 | **언어** | TypeScript 5.x |
 | **프론트엔드** | Next.js 15.1 (App Router), React 19.0, Tailwind CSS v4, Framer Motion |
-| **백엔드** | Next.js API Routes, Firebase Cloud Functions 2nd gen (Node.js 22) |
+| **백엔드** | Next.js API Routes (Node.js 22) |
 | **데이터베이스** | PostgreSQL + Prisma ORM (Supabase), Firebase Firestore (실시간 전용) |
 | **인증** | Firebase Authentication (Google OAuth, 이메일/비밀번호) |
 | **AI** | Google Gemini Vision API 2.5 Flash |
 | **스토리지** | Firebase Storage |
-| **배포** | Firebase Hosting |
+| **배포** | Vercel |
 
 ---
 
@@ -75,13 +75,15 @@ Offlo/
 ├── web/                  # Next.js 15 프론트엔드 + API Routes
 │   └── src/
 │       ├── app/          # 페이지 (App Router) + API Routes
+│       │   └── api/ai/   # AI 분석 (analyze · weekly · chat)
 │       ├── components/   # 공통 컴포넌트
 │       ├── context/      # AuthContext, ThemeContext
 │       ├── hooks/        # 커스텀 훅
-│       └── services/     # Firebase 서비스
-└── functions/            # Firebase Cloud Functions (AI 분석)
+│       ├── lib/          # 서버 전용 유틸 (firebase-admin, ai, garden, notifications)
+│       └── services/     # 클라이언트 서비스 (firebase, auth, ai)
+└── extension/            # Chrome 확장 프로그램 (Manifest V3)
     └── src/
-        └── index.ts      # analyzeScreenTime, generateWeeklyAnalysis, chatWithAnalysis
+        └── background.ts # 사이트 차단 · 디톡스 세션 · 시간 적립
 ```
 
 ---
@@ -90,8 +92,9 @@ Offlo/
 
 ### 사전 요구사항
 - Node.js 22 LTS
-- Firebase 프로젝트 (Blaze 플랜)
+- Firebase 프로젝트 (Spark 무료 플랜 — Auth·Firestore·Storage만 사용)
 - Supabase 프로젝트
+- Gemini API 키 ([Google AI Studio](https://aistudio.google.com) 발급 — 무료)
 
 ### 설치 및 실행
 
@@ -106,21 +109,23 @@ npm install
 
 # 환경변수 설정
 cp .env.local.example .env.local
-# .env.local 에 Firebase 설정값 및 Supabase 설정값 입력
+# .env.local 에 Firebase · Supabase · GEMINI_API_KEY 입력
 
 # 개발 서버 실행
 npm run dev
 ```
 
-### Cloud Functions 실행
+### 배포 (Vercel)
+
+Vercel 프로젝트 생성 시 **Root Directory를 `web`으로 지정**하고,
+`web/.env.local`의 모든 환경변수를 Vercel 대시보드에 등록한다.
+GitHub `main` 브랜치에 push하면 자동 배포된다.
+
+### Chrome 확장 프로그램 빌드
 
 ```bash
-cd functions
-npm install
-npm run build
-
-# 환경변수 설정 (.env 파일에 GEMINI_API_KEY 입력)
-firebase deploy --only functions
+cd extension
+node build.js          # dist/ 생성 → chrome://extensions 에서 언팩 로드
 ```
 
 ---
@@ -138,12 +143,12 @@ firebase deploy --only functions
 | 7단계 | Chrome 확장 프로그램 개발 (Manifest V3) | ✅ 완료 |
 | 8단계 | 대시보드 고도화 · 부가 페이지 구축 | ✅ 완료 |
 | 9단계 | 게이미피케이션 구현 (반려 식물 · 동물) | ✅ 완료 |
-| 10단계 | 알림 · 리마인더 시스템 구현 | 🔲 예정 |
+| 10단계 | 알림 · 리마인더 시스템 구현 | 🚧 진행 중 (Phase 1 완료) |
 | 11단계 | 소셜 기능 · 커뮤니티 페이지 구축 | 🔲 예정 |
 | 12단계 | 모바일 반응형 최적화 | 🔲 예정 |
 | 13단계 | 성능 최적화 · 코드 리팩토링 | 🔲 예정 |
 | 14단계 | QA · 테스트 · 버그 수정 | 🔲 예정 |
-| 15단계 | 마무리 작업 · Firebase Hosting 배포 | 🔲 예정 |
+| 15단계 | 마무리 작업 · Vercel 배포 | 🔲 예정 |
 
 ---
 

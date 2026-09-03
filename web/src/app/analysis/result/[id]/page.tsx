@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ref as storageRef, uploadBytes } from "firebase/storage";
-import { chatWithAnalysis, AnalysisContext } from "@/services/cloudFunctions";
+import { chatWithAnalysis, AnalysisContext } from "@/services/ai";
 import { useAuth } from "@/hooks/useAuth";
 import { storage } from "@/services/firebase";
 import Navbar from "@/components/Navbar";
@@ -146,9 +146,9 @@ function AnalysisChat({
     try {
       // imagePreview는 UI 전용이므로 서버에 보내지 않음
       const payload = updatedMessages.map(({ imagePreview: _preview, ...rest }) => rest);
-      const result = await chatWithAnalysis({ analysisId, messages: payload, analysisContext });
+      const { reply } = await chatWithAnalysis({ analysisId, messages: payload, analysisContext });
 
-      setMessages((prev) => [...prev, { role: "model", text: result.data.reply }]);
+      setMessages((prev) => [...prev, { role: "model", text: reply }]);
     } catch (err: unknown) {
       const msg = err && typeof err === "object" && "message" in err
         ? (err as { message: string }).message

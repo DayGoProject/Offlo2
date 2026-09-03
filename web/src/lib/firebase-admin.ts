@@ -10,11 +10,17 @@ function getAdminApp(): admin.app.App {
 
   return admin.initializeApp({
     credential: admin.credential.cert(JSON.parse(raw)),
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   });
 }
 
 export function getAdminFirestore(): admin.firestore.Firestore {
   return getAdminApp().firestore();
+}
+
+/** AI 분석용 스크린샷·채팅 이미지 버킷 (다운로드 후 즉시 삭제) */
+export function getAdminBucket() {
+  return getAdminApp().storage().bucket();
 }
 
 /* ── Firebase ID Token 검증 → uid 반환 ─────────────────────── */

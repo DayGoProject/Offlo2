@@ -2,6 +2,8 @@
    Offlo 확장 프로그램 — Popup UI
    ═══════════════════════════════════════════════════════════ */
 
+import { APP_BASE_URL } from './config';
+
 /* ── 타입 ────────────────────────────────────────────────── */
 
 interface Session {
@@ -81,7 +83,7 @@ function renderLogin() {
     </div>
   `;
   document.getElementById('loginBtn')!.addEventListener('click', () => {
-    const url = `https://offlo--offlo2-app.asia-east1.hosted.app/extension-auth?extensionId=${chrome.runtime.id}`;
+    const url = `${APP_BASE_URL}/extension-auth?extensionId=${chrome.runtime.id}`;
     chrome.tabs.create({ url });
     window.close();
   });

@@ -5,9 +5,6 @@
 .env.development.local
 .env.test.local
 .env.production.local
-functions/.env
-functions/.env.local
-functions/.secret.local
 
 # Firebase
 .firebase/
@@ -19,7 +16,6 @@ ui-debug.log
 node_modules/
 
 # Cloud Functions build output
-functions/lib/
 
 # Extension build output & Firebase config (contains real keys)
 extension/dist/

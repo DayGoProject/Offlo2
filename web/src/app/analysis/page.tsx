@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ref, uploadBytes } from "firebase/storage";
-import { analyzeScreenTime, generateWeeklyAnalysis, AnalysisResult, DailySummary } from "@/services/cloudFunctions";
+import { analyzeScreenTime, generateWeeklyAnalysis, DailySummary } from "@/services/ai";
 import { useAuth } from "@/hooks/useAuth";
 import { storage } from "@/services/firebase";
 import Navbar from "@/components/Navbar";
@@ -142,8 +142,7 @@ export default function AnalysisPage() {
       await uploadBytes(fileRef, file, { contentType: file.type });
 
       setStatus("analyzing");
-      const cfResult = await analyzeScreenTime({ storagePath });
-      const analysisData: AnalysisResult = cfResult.data.analysisData;
+      const { analysisData } = await analyzeScreenTime({ storagePath });
 
       setStatus("saving");
       const token = await user.getIdToken();
@@ -224,8 +223,7 @@ export default function AnalysisPage() {
         detoxScore: r.detoxScore,
       }));
 
-      const cfResult = await generateWeeklyAnalysis({ dailySummaries });
-      const analysisData: AnalysisResult = cfResult.data.analysisData;
+      const { analysisData } = await generateWeeklyAnalysis({ dailySummaries });
 
       const saveRes = await fetch("/api/analyses", {
         method: "POST",

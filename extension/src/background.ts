@@ -3,6 +3,8 @@
    역할: 차단 목록 관리 · 세션 타이머 · Firestore 적립
    ═══════════════════════════════════════════════════════════ */
 
+import { APP_BASE_URL } from './config';
+
 /* ── 타입 ────────────────────────────────────────────────── */
 
 interface Session {
@@ -102,10 +104,6 @@ async function creditDetoxTime(seconds: number): Promise<void> {
   const minutes = Math.floor(seconds / 60);
   if (minutes > 0) await syncToFirestore(minutes);
 }
-
-/* ── 앱 기본 URL ─────────────────────────────────────────── */
-// 로컬 개발 시: 'http://localhost:3000'
-const APP_BASE_URL = 'https://offlo2-app.web.app';
 
 /* ── 디톡스 시간 API 적립 (Admin SDK 경유) ───────────────── */
 
