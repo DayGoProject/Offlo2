@@ -28,7 +28,7 @@
   ],
   "externally_connectable": {
     "matches": [
-      "https://offlo.vercel.app/*",
+      "https://offlo2.vercel.app/*",
       "http://localhost:3000/*"
     ]
   }
