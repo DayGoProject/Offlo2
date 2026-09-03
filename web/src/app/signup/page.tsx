@@ -37,6 +37,7 @@ export default function SignupPage() {
     } catch (err: unknown) {
       const code = getFirebaseErrorCode(err);
       if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
+      console.error("[Google 회원가입 실패]", code, err);
       setError(getAuthErrorMessage(code));
     } finally {
       setGoogleLoading(false);
