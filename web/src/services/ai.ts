@@ -59,7 +59,9 @@ export interface AnalysisContext {
 export interface ChatMessagePayload {
   role: "user" | "model";
   text: string;
-  imagePath?: string;
+  /** 방금 보내는 메시지에만 포함한다 — 히스토리에 남기면 요청 본문이 불어난다 */
+  imageBase64?: string;
+  mimeType?: string;
 }
 
 /* ── 공통 호출 유틸 ─────────────────────────────────────────── */
@@ -87,8 +89,8 @@ async function postAi<T>(path: string, body: unknown): Promise<T> {
 
 /* ── AI API ────────────────────────────────────────────────── */
 
-/** 일간 스크린타임 이미지 분석 (Storage 업로드 후 경로 전달) */
-export function analyzeScreenTime(params: { storagePath: string }) {
+/** 일간 스크린타임 이미지 분석 (압축한 이미지를 본문에 실어 전달) */
+export function analyzeScreenTime(params: { imageBase64: string; mimeType: string }) {
   return postAi<{ analysisData: AnalysisResult }>("/api/ai/analyze", params);
 }
 

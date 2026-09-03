@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ref, uploadBytes } from "firebase/storage";
 import { analyzeScreenTime, generateWeeklyAnalysis, DailySummary } from "@/services/ai";
+import { fileToInlineImage } from "@/services/image";
 import { useAuth } from "@/hooks/useAuth";
-import { storage } from "@/services/firebase";
 import Navbar from "@/components/Navbar";
 
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/heif", "image/webp"];
+// HEIC은 브라우저가 디코딩하지 못해 제외 (스크린샷은 PNG/JPG로 저장됨)
+const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE_MB = 10;
 const WEEKLY_THRESHOLD = 7; // 주간 분석에 필요한 일간 분석 수
 
@@ -135,14 +135,10 @@ export default function AnalysisPage() {
     setError(null);
     try {
       setStatus("uploading");
-      const timestamp = Date.now();
-      const ext = file.name.split(".").pop() || "jpg";
-      const storagePath = `users/${user.uid}/screenshots/${timestamp}.${ext}`;
-      const fileRef = ref(storage, storagePath);
-      await uploadBytes(fileRef, file, { contentType: file.type });
+      const { imageBase64, mimeType } = await fileToInlineImage(file);
 
       setStatus("analyzing");
-      const { analysisData } = await analyzeScreenTime({ storagePath });
+      const { analysisData } = await analyzeScreenTime({ imageBase64, mimeType });
 
       setStatus("saving");
       const token = await user.getIdToken();

@@ -1,7 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,6 +13,6 @@ const firebaseConfig = {
 
 export const app = getApps()[0] ?? initializeApp(firebaseConfig);
 
+// Cloud Storage는 사용하지 않는다 — AI 이미지는 저장 없이 API Route로 직접 전송
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);

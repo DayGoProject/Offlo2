@@ -63,7 +63,7 @@
 | **데이터베이스** | PostgreSQL + Prisma ORM (Supabase), Firebase Firestore (실시간 전용) |
 | **인증** | Firebase Authentication (Google OAuth, 이메일/비밀번호) |
 | **AI** | Google Gemini Vision API 2.5 Flash |
-| **스토리지** | Firebase Storage |
+| **이미지 처리** | 클라이언트 압축 후 API Route로 직접 전송 (저장하지 않음) |
 | **배포** | Vercel |
 
 ---
@@ -92,7 +92,7 @@ Offlo/
 
 ### 사전 요구사항
 - Node.js 22 LTS
-- Firebase 프로젝트 (Spark 무료 플랜 — Auth·Firestore·Storage만 사용)
+- Firebase 프로젝트 (Spark 무료 플랜 — Auth·Firestore만 사용)
 - Supabase 프로젝트
 - Gemini API 키 ([Google AI Studio](https://aistudio.google.com) 발급 — 무료)
 

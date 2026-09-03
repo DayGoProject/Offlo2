@@ -1,49 +1,39 @@
-import { verifyIdToken, handleApiError, getAdminBucket, apiError } from "@/lib/firebase-admin";
+import { verifyIdToken, handleApiError } from "@/lib/firebase-admin";
 import {
   DAILY_ANALYSIS_PROMPT,
-  assertStoragePath,
+  assertInlineImage,
   getGeminiModel,
   parseGeminiJson,
 } from "@/lib/ai";
 
-// firebase-admin은 Node 런타임 필요 (Edge 불가)
+// firebase-admin(토큰 검증)은 Node 런타임 필요 (Edge 불가)
 export const runtime = "nodejs";
 // Gemini Vision 응답 대기 — Vercel Hobby 상한
 export const maxDuration = 60;
 
 /**
  * POST /api/ai/analyze — 일간 스크린타임 이미지 분석
- * body: { storagePath: string }
+ * body: { imageBase64: string, mimeType: string }
  * 반환: { analysisData: AnalysisResult }
  *
- * Storage에서 이미지를 내려받아 Gemini로 분석한 뒤, 원본 이미지는 즉시 삭제한다.
+ * 이미지는 저장하지 않는다 — 클라이언트가 압축해 보낸 데이터를 그대로 Gemini에 전달하고 버린다.
  * 분석 결과 저장은 프론트엔드가 POST /api/analyses로 처리.
  */
 export async function POST(req: Request) {
   try {
-    const uid = await verifyIdToken(req);
+    await verifyIdToken(req);
 
-    const { storagePath } = (await req.json()) as { storagePath: unknown };
-    assertStoragePath(storagePath, uid);
-
-    const file = getAdminBucket().file(storagePath);
-    const [exists] = await file.exists();
-    if (!exists) throw apiError("이미지 파일을 찾을 수 없습니다.", 404);
-
-    const [metadata] = await file.getMetadata();
-    const mimeType = (metadata.contentType as string) || "image/jpeg";
-    const [imageBuffer] = await file.download();
+    const { imageBase64, mimeType } = (await req.json()) as {
+      imageBase64: unknown;
+      mimeType: unknown;
+    };
+    assertInlineImage(imageBase64, mimeType);
 
     const model = getGeminiModel();
     const result = await model.generateContent([
       { text: DAILY_ANALYSIS_PROMPT },
-      { inlineData: { mimeType, data: imageBuffer.toString("base64") } },
+      { inlineData: { mimeType: mimeType as string, data: imageBase64 } },
     ]);
-
-    // Storage 파일은 분석 완료 즉시 삭제 (개인정보 보호)
-    await file
-      .delete()
-      .catch((e) => console.error(`스토리지 파일 삭제 실패: ${storagePath}`, e));
 
     const analysisData = parseGeminiJson(
       result.response.text(),

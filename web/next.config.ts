@@ -20,15 +20,13 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://apis.google.com",
       "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
       "font-src 'self' https://cdn.jsdelivr.net",
-      // Firebase Storage 이미지, blob (로컬 프리뷰)
-      "img-src 'self' data: blob: https://firebasestorage.googleapis.com",
-      // Firebase Auth·Firestore·Storage·Functions
+      // 로컬 프리뷰(blob), 프로필 이미지(data)
+      "img-src 'self' data: blob: https://lh3.googleusercontent.com",
+      // Firebase Auth·Firestore
       [
         "connect-src 'self'",
         "https://*.googleapis.com",
         "https://*.firebaseapp.com",
-        "https://*.cloudfunctions.net",
-        "https://firebasestorage.googleapis.com",
         "wss://*.firebaseio.com",
       ].join(" "),
       // Google OAuth 팝업

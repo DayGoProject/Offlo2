@@ -1,6 +1,6 @@
-import { verifyIdToken, handleApiError, getAdminBucket, apiError } from "@/lib/firebase-admin";
+import { verifyIdToken, handleApiError, apiError } from "@/lib/firebase-admin";
 import {
-  assertStoragePath,
+  assertInlineImage,
   buildChatSystemPrompt,
   getGeminiModel,
   type AnalysisContext,
@@ -20,7 +20,7 @@ const MAX_MESSAGE_LENGTH = 2000;
  */
 export async function POST(req: Request) {
   try {
-    const uid = await verifyIdToken(req);
+    await verifyIdToken(req);
 
     const { analysisId, messages, analysisContext } = (await req.json()) as {
       analysisId: unknown;
@@ -70,22 +70,15 @@ export async function POST(req: Request) {
     const userParts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> =
       [{ text: lastMessage.text }];
 
-    if (lastMessage.imagePath) {
-      assertStoragePath(lastMessage.imagePath, uid);
-
-      const chatFile = getAdminBucket().file(lastMessage.imagePath);
-      const [imgExists] = await chatFile.exists();
-      if (imgExists) {
-        const [imgMeta] = await chatFile.getMetadata();
-        const imgMime = (imgMeta.contentType as string) || "image/jpeg";
-        const [imgBuffer] = await chatFile.download();
-        userParts.push({
-          inlineData: { mimeType: imgMime, data: imgBuffer.toString("base64") },
-        });
-        await chatFile
-          .delete()
-          .catch((e) => console.error(`채팅 이미지 삭제 실패: ${lastMessage.imagePath}`, e));
-      }
+    // 이미지는 마지막(방금 보낸) 메시지에만 실려 온다 — 저장하지 않고 그대로 전달
+    if (lastMessage.imageBase64) {
+      assertInlineImage(lastMessage.imageBase64, lastMessage.mimeType);
+      userParts.push({
+        inlineData: {
+          mimeType: lastMessage.mimeType as string,
+          data: lastMessage.imageBase64,
+        },
+      });
     }
 
     const result = await chat.sendMessage(userParts);

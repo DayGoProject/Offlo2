@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ref as storageRef, uploadBytes } from "firebase/storage";
 import { chatWithAnalysis, AnalysisContext } from "@/services/ai";
+import { fileToInlineImage } from "@/services/image";
 import { useAuth } from "@/hooks/useAuth";
-import { storage } from "@/services/firebase";
 import Navbar from "@/components/Navbar";
 
 /* ── 타입 ── */
@@ -34,7 +33,8 @@ interface Analysis {
 interface ChatMessage {
   role: "user" | "model";
   text: string;
-  imagePath?: string;
+  imageBase64?: string;
+  mimeType?: string;
   imagePreview?: string; // 로컬 프리뷰용 (UI only)
 }
 
@@ -112,20 +112,16 @@ function AnalysisChat({
   async function handleSend() {
     if ((!input.trim() && !pendingImage) || sending || !user) return;
 
-    let imagePath: string | undefined;
+    let inlineImage: { imageBase64: string; mimeType: string } | undefined;
     let imagePreview: string | undefined;
 
-    // 이미지가 있으면 Storage에 업로드
+    // 이미지가 있으면 압축해 인라인으로 전송 (저장하지 않음)
     if (pendingImage) {
       try {
-        const timestamp = Date.now();
-        const ext = pendingImage.file.name.split(".").pop() || "jpg";
-        imagePath = `users/${user.uid}/chat-images/${timestamp}.${ext}`;
-        const fileRef = storageRef(storage, imagePath);
-        await uploadBytes(fileRef, pendingImage.file, { contentType: pendingImage.file.type });
+        inlineImage = await fileToInlineImage(pendingImage.file);
         imagePreview = pendingImage.preview;
-      } catch {
-        alert("이미지 업로드에 실패했습니다. 다시 시도해주세요.");
+      } catch (err: unknown) {
+        alert(err instanceof Error ? err.message : "이미지 처리에 실패했습니다. 다시 시도해주세요.");
         return;
       }
     }
@@ -133,7 +129,7 @@ function AnalysisChat({
     const userMessage: ChatMessage = {
       role: "user",
       text: input.trim() || "(이미지 첨부)",
-      ...(imagePath && { imagePath }),
+      ...(inlineImage && inlineImage),
       ...(imagePreview && { imagePreview }),
     };
 
@@ -144,8 +140,13 @@ function AnalysisChat({
     setSending(true);
 
     try {
-      // imagePreview는 UI 전용이므로 서버에 보내지 않음
-      const payload = updatedMessages.map(({ imagePreview: _preview, ...rest }) => rest);
+      // imagePreview는 UI 전용이라 제외하고, 이미지 데이터는 마지막 메시지에만 남긴다
+      // (히스토리에 계속 실어 보내면 요청 본문이 누적되어 상한을 넘는다)
+      const payload = updatedMessages.map((msg, i) => {
+        const { imagePreview: _preview, imageBase64, mimeType, ...rest } = msg;
+        const isLast = i === updatedMessages.length - 1;
+        return isLast && imageBase64 ? { ...rest, imageBase64, mimeType } : rest;
+      });
       const { reply } = await chatWithAnalysis({ analysisId, messages: payload, analysisContext });
 
       setMessages((prev) => [...prev, { role: "model", text: reply }]);

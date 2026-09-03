@@ -43,7 +43,9 @@ export interface AnalysisResult {
 export interface ChatMessage {
   role: "user" | "model";
   text: string;
-  imagePath?: string;
+  /** 클라이언트가 압축해 인라인으로 보낸 이미지 (저장하지 않음) */
+  imageBase64?: string;
+  mimeType?: string;
 }
 
 /** 채팅에 전달하는 분석 컨텍스트 */
@@ -82,17 +84,24 @@ export function getGeminiModel(systemInstruction?: string) {
 
 /* ── 보안 유틸 ──────────────────────────────────────────────── */
 
-/** storagePath가 uid 소유의 허용된 경로인지 검증 */
-export function assertStoragePath(
-  storagePath: unknown,
-  uid: string
-): asserts storagePath is string {
-  if (!storagePath || typeof storagePath !== "string")
-    throw apiError("storagePath가 필요합니다.", 400);
-  // 허용 경로: users/{uid}/screenshots/{file} 또는 users/{uid}/chat-images/{file}
-  const validPattern = /^users\/[^/]+\/(screenshots|chat-images)\/[^/]+$/;
-  if (!storagePath.startsWith(`users/${uid}/`) || !validPattern.test(storagePath))
-    throw apiError("접근 권한이 없습니다.", 403);
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+/** base64 문자열 길이 상한 — 요청 본문 상한(Vercel 4.5MB)보다 낮게 잡는다. */
+const MAX_IMAGE_BASE64_LENGTH = 4 * 1024 * 1024;
+
+/** 인라인 이미지의 형식·크기를 검증한다. */
+export function assertInlineImage(
+  imageBase64: unknown,
+  mimeType: unknown
+): asserts imageBase64 is string {
+  if (!imageBase64 || typeof imageBase64 !== "string")
+    throw apiError("이미지 데이터가 필요합니다.", 400);
+  if (imageBase64.length > MAX_IMAGE_BASE64_LENGTH)
+    throw apiError("이미지 용량이 너무 큽니다.", 413);
+  if (typeof mimeType !== "string" || !ALLOWED_MIME_TYPES.includes(mimeType))
+    throw apiError("지원하지 않는 이미지 형식입니다.", 400);
+  // base64 이외의 문자가 섞여 있으면 거부
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(imageBase64))
+    throw apiError("이미지 데이터 형식이 올바르지 않습니다.", 400);
 }
 
 /** Gemini 응답 JSON의 필수 필드를 검증 */
