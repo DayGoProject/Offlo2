@@ -336,7 +336,7 @@ export default function ResultPage() {
   if (fetching) return (
     <>
       <Navbar />
-      <main className="min-h-screen pt-20" style={{ background: "var(--bg-page)" }}>
+      <main className="min-h-screen pt-20 overflow-x-hidden" style={{ background: "var(--bg-page)" }}>
         <div className="max-w-2xl mx-auto mt-28 px-6 flex flex-col items-center gap-5">
           <div className="w-11 h-11 rounded-full border-[3px] animate-spin"
             style={{ borderColor: "rgba(61,219,135,0.2)", borderTopColor: "#3DDB87" }} />
@@ -349,7 +349,7 @@ export default function ResultPage() {
   if (error || !analysis) return (
     <>
       <Navbar />
-      <main className="min-h-screen pt-20" style={{ background: "var(--bg-page)" }}>
+      <main className="min-h-screen pt-20 overflow-x-hidden" style={{ background: "var(--bg-page)" }}>
         <div className="max-w-md mx-auto mt-28 px-6 flex flex-col items-center gap-5">
           <p className="text-red-400 text-sm text-center">{error ?? "알 수 없는 오류가 발생했습니다."}</p>
           <Link href="/analysis" className="rounded-full px-7 py-3 font-bold text-sm"
@@ -377,7 +377,7 @@ export default function ResultPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen pt-20" style={{ background: "var(--bg-page)" }}>
+      <main className="min-h-screen pt-20 overflow-x-hidden" style={{ background: "var(--bg-page)" }}>
         {/* background glow */}
         <div
           className="pointer-events-none fixed inset-0 z-0"
@@ -387,7 +387,7 @@ export default function ResultPage() {
           }}
         />
 
-        <div className="relative z-10 max-w-[1440px] mx-auto px-6 lg:px-20 py-12 pb-20">
+        <div className="relative z-10 max-w-[1440px] mx-auto px-5 sm:px-6 lg:px-20 py-8 sm:py-12 pb-20">
 
           {/* ── 페이지 헤더 ── */}
           <div className="flex items-center gap-3 mb-10">
@@ -407,7 +407,7 @@ export default function ResultPage() {
           </div>
 
           {/* ── 2-column grid ── */}
-          <div className="grid gap-8 lg:gap-12" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+          <div className="grid gap-8 lg:gap-12" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))" }}>
 
             {/* ── LEFT: 점수 + 앱 사용 + 액션 ── */}
             <div className="flex flex-col gap-6">

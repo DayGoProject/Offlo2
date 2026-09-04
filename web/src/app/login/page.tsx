@@ -74,8 +74,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-md border border-black/[0.1] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.03] rounded-2xl p-10 shadow-sm dark:shadow-none">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-md border border-black/[0.1] dark:border-white/[0.1] bg-white/80 dark:bg-white/[0.03] rounded-2xl p-6 sm:p-10 shadow-sm dark:shadow-none">
 
         {/* 뒤로 */}
         <Link href="/" className="flex items-center justify-center gap-1.5 text-[0.8125rem] text-black/45 dark:text-white/45 mb-6 hover:text-black dark:hover:text-white transition-colors">

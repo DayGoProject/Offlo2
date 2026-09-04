@@ -85,10 +85,10 @@ export default function BadgesPage() {
     <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
       <AppSidebar />
 
-      <div className="ml-56 flex-1 flex flex-col min-h-screen overflow-x-hidden">
+      <div className="lg:ml-56 pt-14 lg:pt-0 flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* 헤더 */}
         <div
-          className="flex items-center justify-between px-7 py-5 border-b"
+          className="flex items-center justify-between px-4 sm:px-7 py-4 sm:py-5 border-b"
           style={{ borderColor: "var(--border-card)" }}
         >
           <div>
@@ -101,7 +101,7 @@ export default function BadgesPage() {
           </div>
         </div>
 
-        <div className="p-6 flex-1 space-y-8">
+        <div className="p-4 sm:p-6 flex-1 space-y-8">
 
           {/* ── 획득한 배지 ── */}
           <section>
@@ -110,7 +110,7 @@ export default function BadgesPage() {
             </h2>
 
             {loading ? (
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="rounded-2xl h-44 animate-pulse" style={{ background: "var(--bg-bar)" }} />
                 ))}
@@ -126,7 +126,7 @@ export default function BadgesPage() {
                 </p>
               </Card>
             ) : (
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {badges.map((badge) => {
                   const def = ALL_BADGES.find((b) => b.name === badge.name);
                   return (
@@ -175,7 +175,7 @@ export default function BadgesPage() {
               <h2 className="text-sm font-semibold mb-3" style={{ color: "var(--text-secondary)" }}>
                 획득 가능한 배지
               </h2>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 {lockedBadges.map((badge) => (
                   <div
                     key={badge.name}

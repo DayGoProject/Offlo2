@@ -265,7 +265,7 @@ export default function AnalysisPage() {
     <>
       <Navbar />
       <main
-        className="min-h-screen pt-20"
+        className="min-h-screen pt-20 overflow-x-hidden"
         style={{ background: "var(--bg-page)" }}
       >
         {/* background glow */}
@@ -278,7 +278,7 @@ export default function AnalysisPage() {
         />
 
         <div
-          className="relative z-10 max-w-[1440px] mx-auto px-6 lg:px-20 py-16"
+          className="relative z-10 max-w-[1440px] mx-auto px-5 sm:px-6 lg:px-20 py-10 sm:py-16"
           style={{ display: "grid", gridTemplateColumns: "1fr", gap: "2.5rem" }}
         >
           {/* ── 헤더 ── */}
@@ -299,7 +299,7 @@ export default function AnalysisPage() {
           </div>
 
           {/* ── 2-column grid (lg+) ── */}
-          <div className="grid gap-8 lg:gap-12" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
+          <div className="grid gap-8 lg:gap-12" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))" }}>
 
             {/* ── LEFT: 업로드 영역 ── */}
             <div className="flex flex-col gap-6">
@@ -427,7 +427,7 @@ export default function AnalysisPage() {
                   style={{ color: "var(--text-faint)" }}>
                   &apos;일&apos; 탭 스크린샷 찍는 방법
                 </p>
-                <div className="grid grid-cols-2 gap-3 max-[480px]:grid-cols-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="rounded-2xl px-5 py-4 flex flex-col gap-2"
                     style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-card)" }}>
                     <span className="text-xs font-bold" style={{ color: "#3DDB87" }}>iPhone / iPad</span>

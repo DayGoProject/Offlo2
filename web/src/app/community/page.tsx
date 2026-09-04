@@ -111,10 +111,10 @@ export default function CommunityPage() {
     <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
       <AppSidebar />
 
-      <div className="ml-56 flex-1 flex flex-col min-h-screen overflow-x-hidden">
+      <div className="lg:ml-56 pt-14 lg:pt-0 flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* 헤더 */}
         <div
-          className="flex items-center justify-between px-7 py-5 border-b"
+          className="flex items-center justify-between px-4 sm:px-7 py-4 sm:py-5 border-b"
           style={{ borderColor: "var(--border-card)" }}
         >
           <div>
@@ -127,9 +127,9 @@ export default function CommunityPage() {
           </div>
         </div>
 
-        <div className="p-6 flex-1 flex gap-6 items-start">
+        <div className="p-4 sm:p-6 flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6 items-start">
           {/* ── 좌: 피드 ── */}
-          <div className="flex-1 min-w-0 space-y-4">
+          <div className="w-full lg:flex-1 min-w-0 space-y-4">
             {/* 이름 공개 안내 */}
             {showNotice && (
               <div
@@ -252,7 +252,7 @@ export default function CommunityPage() {
           </div>
 
           {/* ── 우: 랭킹 ── */}
-          <div className="w-72 shrink-0 sticky top-6">
+          <div className="w-full lg:w-72 lg:shrink-0 lg:sticky lg:top-6">
             <RankingWidget />
           </div>
         </div>

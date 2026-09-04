@@ -83,11 +83,10 @@ function Hero({ ctaHref }: { ctaHref: string }) {
 
       {/* 메인 콘텐츠 */}
       <div
-        className="relative flex-1 flex items-center gap-0 z-10 max-w-[1440px] mx-auto w-full"
-        style={{ padding: "96px 80px 48px" }}
+        className="relative flex-1 flex items-center gap-0 z-10 max-w-[1440px] mx-auto w-full px-5 sm:px-10 lg:px-20 pt-24 pb-12"
       >
         {/* 왼쪽: 텍스트 블록 */}
-        <div className="flex flex-col flex-shrink-0" style={{ width: "min(600px, 50%)" }}>
+        <div className="flex flex-col w-full lg:w-[min(600px,50%)] lg:flex-shrink-0">
           {/* 배지 */}
           <motion.div
             variants={fadeUp} initial="hidden" animate="visible" custom={0}
@@ -102,9 +101,9 @@ function Hero({ ctaHref }: { ctaHref: string }) {
 
           {/* 헤드라인 */}
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1} className="mb-9">
-            <div className="font-extrabold text-[var(--text-primary)]" style={{ fontSize: "clamp(44px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>스마트폰이</div>
-            <div className="font-extrabold text-[var(--text-primary)]" style={{ fontSize: "clamp(44px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>당신의 시간을</div>
-            <div className="font-extrabold text-gradient" style={{ fontSize: "clamp(44px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>빼앗고 있습니다.</div>
+            <div className="font-extrabold text-[var(--text-primary)]" style={{ fontSize: "clamp(34px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>스마트폰이</div>
+            <div className="font-extrabold text-[var(--text-primary)]" style={{ fontSize: "clamp(34px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>당신의 시간을</div>
+            <div className="font-extrabold text-gradient" style={{ fontSize: "clamp(34px, 5.3vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.03em" }}>빼앗고 있습니다.</div>
           </motion.div>
 
           {/* 서브텍스트 */}
@@ -113,14 +112,14 @@ function Hero({ ctaHref }: { ctaHref: string }) {
             className="text-base leading-[1.8] mb-10"
             style={{ color: "var(--text-muted)", maxWidth: "480px" }}
           >
-            스크린타임 스크린샷 하나를 업로드하면 Gemini AI가<br />
+            스크린타임 스크린샷 하나를 업로드하면 Gemini AI가<br className="hidden lg:inline" />
             앱별 사용 패턴을 분석하고 디톡스 플랜을 제안합니다.
           </motion.p>
 
           {/* CTA 버튼 */}
           <motion.div
             variants={fadeUp} initial="hidden" animate="visible" custom={3}
-            className="flex items-center gap-3 mb-12"
+            className="flex items-center flex-wrap gap-3 mb-12"
           >
             <Link
               href={ctaHref}
@@ -313,7 +312,7 @@ function AnalysisSection({ ctaHref }: { ctaHref: string }) {
   const { ref, inView } = useScrollRef();
 
   return (
-    <section id="analysis" ref={ref} className="py-28 px-6 max-w-7xl mx-auto">
+    <section id="analysis" ref={ref} className="py-16 sm:py-28 px-5 sm:px-6 max-w-7xl mx-auto">
       <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
         {/* 텍스트 */}
         <motion.div variants={fadeLeft} initial="hidden" animate={inView ? "visible" : "hidden"}>
@@ -467,7 +466,7 @@ function CompanionSection({ ctaHref }: { ctaHref: string }) {
   const activeTabStyle = { background: "rgba(61,219,135,0.15)", border: "1px solid rgba(61,219,135,0.3)", color: "#3DDB87" };
 
   return (
-    <section id="companion" className="py-28 px-6 bg-black/[0.02] dark:bg-white/[0.01]">
+    <section id="companion" className="py-16 sm:py-28 px-5 sm:px-6 bg-black/[0.02] dark:bg-white/[0.01]">
       <div className="max-w-7xl mx-auto">
         <div ref={ref} className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
           {/* 목업 */}
@@ -492,7 +491,7 @@ function CompanionSection({ ctaHref }: { ctaHref: string }) {
               {/* ── 식물 탭 ── */}
               {activeTab === "plant" && (
                 <>
-                  <div className="grid grid-cols-4 gap-3 mb-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                     {plantStages.map((p, i) => (
                       <button key={p.label} onClick={() => setSelectedPlant(i)}
                         className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all hover:scale-105"
@@ -541,7 +540,7 @@ function CompanionSection({ ctaHref }: { ctaHref: string }) {
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-4 gap-3 mb-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                     {animalStages.map((s, i) => (
                       <div key={s.label} className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all"
                         style={activeStageAnimal === i ? activeCard : inactiveCard}>
@@ -623,7 +622,7 @@ function SubFeatures() {
   const { ref, inView } = useScrollRef();
 
   return (
-    <section id="features" className="py-28 px-6 max-w-7xl mx-auto" ref={ref}>
+    <section id="features" className="py-16 sm:py-28 px-5 sm:px-6 max-w-7xl mx-auto" ref={ref}>
       <motion.div
         variants={fadeUp}
         initial="hidden"
@@ -664,7 +663,7 @@ function CTABanner({ ctaHref }: { ctaHref: string }) {
   const { ref, inView } = useScrollRef();
 
   return (
-    <section className="py-28 px-6" ref={ref}>
+    <section className="py-16 sm:py-28 px-5 sm:px-6" ref={ref}>
       <motion.div
         variants={fadeUp}
         initial="hidden"
@@ -676,7 +675,7 @@ function CTABanner({ ctaHref }: { ctaHref: string }) {
           className="absolute inset-0 -z-10 rounded-3xl pointer-events-none"
           style={{ background: "radial-gradient(ellipse at center, rgba(61,219,135,0.06) 0%, transparent 70%)" }}
         />
-        <div className="border border-black/[0.07] dark:border-white/[0.07] rounded-3xl bg-white/60 dark:bg-white/[0.02] px-8 py-16 sm:py-20 shadow-sm dark:shadow-none">
+        <div className="border border-black/[0.07] dark:border-white/[0.07] rounded-3xl bg-white/60 dark:bg-white/[0.02] px-5 sm:px-8 py-12 sm:py-20 shadow-sm dark:shadow-none">
           <h2 className="text-4xl sm:text-6xl font-extrabold tracking-tight mb-6 text-[#0A0A0F] dark:text-white">
             지금 바로<br />
             <span className="text-gradient">시작하세요</span>
@@ -699,7 +698,7 @@ function CTABanner({ ctaHref }: { ctaHref: string }) {
 /* ── Footer ── */
 function Footer() {
   return (
-    <footer className="border-t border-black/[0.06] dark:border-white/[0.06] py-10 px-6">
+    <footer className="border-t border-black/[0.06] dark:border-white/[0.06] py-10 px-5 sm:px-6">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         <span className="text-gradient text-sm font-extrabold">Offlo</span>
         <span className="text-black/25 dark:text-white/25 text-sm">© 2026 Offlo. All rights reserved.</span>
@@ -721,7 +720,7 @@ export default function LandingPage() {
   return (
     <>
       <Navbar />
-      <main>
+      <main className="overflow-x-hidden">
         <Hero ctaHref={ctaHref} />
         <AnalysisSection ctaHref={ctaHref} />
         <CompanionSection ctaHref={ctaHref} />

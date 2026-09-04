@@ -112,10 +112,10 @@ export default function HistoryPage() {
     <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
       <AppSidebar />
 
-      <div className="ml-56 flex-1 flex flex-col min-h-screen overflow-x-hidden">
+      <div className="lg:ml-56 pt-14 lg:pt-0 flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* 헤더 */}
         <div
-          className="flex items-center justify-between px-7 py-5 border-b"
+          className="flex items-center justify-between px-4 sm:px-7 py-4 sm:py-5 border-b"
           style={{ borderColor: "var(--border-card)" }}
         >
           <div>
@@ -135,9 +135,9 @@ export default function HistoryPage() {
           </Link>
         </div>
 
-        <div className="p-6 flex-1 space-y-5">
+        <div className="p-4 sm:p-6 flex-1 space-y-5">
           {/* 요약 카드 */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { label: "전체 분석", value: loading ? "—" : `${analyses.length}회` },
               { label: "평균 디톡스 점수", value: avg !== null ? `${avg}점` : "—" },
@@ -236,10 +236,10 @@ export default function HistoryPage() {
                 <Link
                   key={a.id}
                   href={`/analysis/result/${a.id}`}
-                  className="flex items-center justify-between px-5 py-4 rounded-2xl transition-colors hover:opacity-80"
+                  className="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 rounded-2xl transition-colors hover:opacity-80"
                   style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                     <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
                       style={{ background: "rgba(61,219,135,0.1)" }}

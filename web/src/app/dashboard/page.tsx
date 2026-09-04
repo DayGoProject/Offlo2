@@ -217,19 +217,19 @@ export default function DashboardPage() {
     <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
       <AppSidebar />
 
-      <div className="ml-56 flex-1 flex flex-col min-h-screen overflow-x-hidden">
+      <div className="lg:ml-56 pt-14 lg:pt-0 flex-1 flex flex-col min-h-screen overflow-x-hidden">
 
         {/* ── 상단 스탯 바 ── */}
-        <div className="flex items-center justify-between px-7 py-4 border-b"
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-7 py-3 sm:py-4 border-b"
           style={{ borderColor: "var(--border-card)" }}>
-          <div className="flex items-center gap-7">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 w-full lg:w-auto lg:flex lg:items-center lg:gap-7">
             {[
               { label: "누적 디톡스", value: detoxMin === null ? "—" : fmt(detoxMin) },
               { label: "오늘 스크린타임", value: latestDaily ? fmt(latestDaily.totalMinutes) : "—" },
               { label: "총 분석 횟수", value: loading ? "—" : `${analyses.length}회` },
               { label: "최근 점수", value: latest ? `${latest.detoxScore}점` : "—" },
             ].map(({ label, value }, i, arr) => (
-              <div key={label} className="flex items-center gap-7">
+              <div key={label} className="flex items-center gap-4 lg:gap-7">
                 <div>
                   <p className="text-xs mb-0.5" style={{ color: "var(--text-muted)" }}>{label}</p>
                   {loading ? (
@@ -239,13 +239,13 @@ export default function DashboardPage() {
                   )}
                 </div>
                 {i < arr.length - 1 && (
-                  <div className="w-px h-8 flex-shrink-0" style={{ background: "var(--border-card)" }} />
+                  <div className="hidden lg:block w-px h-8 flex-shrink-0" style={{ background: "var(--border-card)" }} />
                 )}
               </div>
             ))}
           </div>
 
-          <div className="relative" ref={profileRef}>
+          <div className="relative hidden lg:block" ref={profileRef}>
             <button
               onClick={() => setProfileOpen((v) => !v)}
               className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition-colors hover:bg-white/[0.05] cursor-pointer"
@@ -302,10 +302,10 @@ export default function DashboardPage() {
         </div>
 
         {/* ── 카드 그리드 ── */}
-        <div className="p-6 flex-1 space-y-4">
+        <div className="p-4 sm:p-6 flex-1 space-y-4">
 
           {/* 1행: 오늘 분석 | 주간 차트 | 최근 기록 */}
-          <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 1fr 272px" }}>
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_1fr_272px]">
 
             {/* 오늘 분석 — 링 차트 */}
             <Card>
@@ -324,7 +324,7 @@ export default function DashboardPage() {
                     style={{ borderColor: "rgba(61,219,135,0.2)", borderTopColor: "#3DDB87" }} />
                 </div>
               ) : latestDaily ? (
-                <div className="flex items-center gap-5">
+                <div className="flex flex-col sm:flex-row items-center gap-5">
                   <div className="relative flex-shrink-0" style={{ width: 164, height: 164 }}>
                     <RingChart
                       score={latestDaily.detoxScore}
@@ -455,14 +455,14 @@ export default function DashboardPage() {
           </div>
 
           {/* 2행: 디톡스 게이지 | 활성 목표 | 정원 */}
-          <div className="grid gap-4" style={{ gridTemplateColumns: "1fr 272px 220px" }}>
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-[1fr_272px_220px]">
 
             {/* 누적 디톡스 — 게이지 + 통계 */}
             <Card>
               <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-primary)" }}>
                 누적 디톡스 현황
               </h3>
-              <div className="flex items-center gap-8">
+              <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-8">
                 <div className="relative flex-shrink-0">
                   <GaugeArc value={detoxMin ?? 0} max={gaugeMax} size={220} />
                   <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-center pb-1">
@@ -473,7 +473,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="flex-1 space-y-3">
+                <div className="flex-1 w-full space-y-3">
                   <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                     Offlo 확장 프로그램으로 디톡스 세션을 완료하면 시간이 자동으로 적립됩니다.
                     세션 중 차단된 사이트 접근을 참으면 반려 식물이 자라요.

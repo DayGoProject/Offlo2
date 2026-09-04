@@ -164,10 +164,10 @@ export default function SettingsPage() {
     <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
       <AppSidebar />
 
-      <div className="ml-56 flex-1 flex flex-col min-h-screen overflow-x-hidden">
+      <div className="lg:ml-56 pt-14 lg:pt-0 flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* 헤더 */}
         <div
-          className="flex items-center px-7 py-5 border-b"
+          className="flex items-center px-4 sm:px-7 py-4 sm:py-5 border-b"
           style={{ borderColor: "var(--border-card)" }}
         >
           <h1 className="text-xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
@@ -175,7 +175,7 @@ export default function SettingsPage() {
           </h1>
         </div>
 
-        <div className="p-6 flex-1 max-w-xl space-y-6">
+        <div className="p-4 sm:p-6 flex-1 max-w-xl space-y-6">
 
           {/* 프로필 */}
           <div>
@@ -307,7 +307,7 @@ export default function SettingsPage() {
           <div>
             <SectionTitle>화면</SectionTitle>
             <Card>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>테마</p>
                   <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
@@ -316,7 +316,7 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={toggle}
-                  className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full transition-all hover:opacity-80"
+                  className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full transition-all hover:opacity-80 shrink-0 whitespace-nowrap"
                   style={{ background: "var(--bg-subtle)", border: "1px solid var(--border-card)", color: "var(--text-primary)" }}
                 >
                   {theme === "dark" ? (
@@ -347,7 +347,7 @@ export default function SettingsPage() {
           <div>
             <SectionTitle>계정</SectionTitle>
             <Card className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>로그아웃</p>
                   <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
@@ -356,7 +356,7 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="text-sm font-bold py-2 px-4 rounded-full transition-opacity hover:opacity-80"
+                  className="text-sm font-bold py-2 px-4 rounded-full transition-opacity hover:opacity-80 shrink-0 whitespace-nowrap"
                   style={{ background: "rgba(248,113,113,0.12)", color: "#f87171", border: "1px solid rgba(248,113,113,0.2)" }}
                 >
                   로그아웃
@@ -367,7 +367,7 @@ export default function SettingsPage() {
 
               {/* 회원 탈퇴 */}
               <div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-red-400">회원 탈퇴</p>
                     <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
@@ -376,7 +376,7 @@ export default function SettingsPage() {
                   </div>
                   <button
                     onClick={() => setShowDeleteSection((v) => !v)}
-                    className="text-sm font-bold py-2 px-4 rounded-full transition-opacity hover:opacity-80"
+                    className="text-sm font-bold py-2 px-4 rounded-full transition-opacity hover:opacity-80 shrink-0 whitespace-nowrap"
                     style={{ background: "rgba(248,113,113,0.08)", color: "#f87171", border: "1px solid rgba(248,113,113,0.15)" }}
                   >
                     {showDeleteSection ? "취소" : "탈퇴하기"}

@@ -139,10 +139,11 @@ export default function NotificationCenter() {
         )}
       </button>
 
-      {/* 드롭다운 패널 */}
+      {/* 드롭다운 패널 — 모바일에선 종이 상단바 우측에 있어 오른쪽 정렬해야
+          화면 밖으로 나가지 않는다. 폭도 뷰포트를 넘지 않게 clamp 한다(360px 대응). */}
       {open && (
         <div
-          className="absolute left-0 mt-2 w-80 rounded-2xl overflow-hidden z-50"
+          className="absolute right-0 lg:right-auto lg:left-0 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-2xl overflow-hidden z-50"
           style={{
             background: "var(--bg-card)",
             border: "1px solid var(--border-card)",

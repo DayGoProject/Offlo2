@@ -310,14 +310,14 @@ function FarmPanel({
                 style={{ background: "rgba(0,0,0,0.55)", color: "#fff", backdropFilter: "blur(8px)" }}>
                 함께할 동물을 선택하세요
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-2 sm:gap-4">
                 {ANIMAL_TYPES.map((t) => (
                   <motion.button
                     key={t.id}
                     onClick={() => handleSelectRequest(t.id)}
                     whileHover={{ scale: 1.08, y: -4 }}
                     whileTap={{ scale: 0.96 }}
-                    className="flex flex-col items-center gap-2 px-6 py-4 rounded-2xl"
+                    className="flex flex-col items-center gap-2 px-4 sm:px-6 py-3 sm:py-4 rounded-2xl"
                     style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(10px)" }}
                   >
                     <span className="text-5xl">{t.emoji}</span>
@@ -572,9 +572,9 @@ export default function GardenPage() {
     <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
       <AppSidebar />
 
-      <div className="ml-56 flex-1 flex flex-col min-h-screen overflow-x-hidden">
+      <div className="lg:ml-56 pt-14 lg:pt-0 flex-1 flex flex-col min-h-screen overflow-x-hidden">
         {/* 헤더 */}
-        <div className="flex items-center px-7 py-5 border-b" style={{ borderColor: "var(--border-card)" }}>
+        <div className="flex items-center px-4 sm:px-7 py-4 sm:py-5 border-b" style={{ borderColor: "var(--border-card)" }}>
           <div>
             <h1 className="text-xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>정원</h1>
             <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>반려 식물과 동물을 키워보세요</p>
@@ -587,10 +587,10 @@ export default function GardenPage() {
               style={{ borderColor: "rgba(61,219,135,0.2)", borderTopColor: "#3DDB87" }} />
           </div>
         ) : (
-          <div className="p-6 flex-1 space-y-6">
+          <div className="p-4 sm:p-6 flex-1 space-y-6">
 
             {/* 상단 2열: 식물 + 동물 요약 */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* 반려 식물 */}
               <Card>
                 <div className="flex items-center justify-between mb-4">
@@ -691,7 +691,7 @@ export default function GardenPage() {
 
             {/* 농장 패널 */}
             <div>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-3">
                 <h2 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>🐾 농장</h2>
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>동물을 탭해서 쓰다듬어 보세요</span>
               </div>
@@ -708,7 +708,7 @@ export default function GardenPage() {
             </div>
 
             {/* 하단 통계 */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: "식물 레벨", value: `Lv.${plantLevel.level} · ${plantLevel.name}` },
                 { label: "누적 디톡스", value: fmt(totalMin) },

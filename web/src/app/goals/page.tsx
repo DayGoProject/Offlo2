@@ -245,11 +245,11 @@ export default function GoalsPage() {
     <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
       <AppSidebar />
 
-      <div className="ml-56 flex-1 flex flex-col min-h-screen">
+      <div className="lg:ml-56 pt-14 lg:pt-0 flex-1 flex flex-col min-h-screen overflow-x-hidden">
 
         {/* 헤더 */}
         <div
-          className="flex items-center justify-between px-8 py-6 border-b"
+          className="flex items-center justify-between gap-3 px-4 sm:px-8 py-4 sm:py-6 border-b"
           style={{ borderColor: "var(--border-card)" }}
         >
           <div>
@@ -260,7 +260,7 @@ export default function GoalsPage() {
           </div>
           <button
             onClick={openModal}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-opacity hover:opacity-85"
+            className="flex items-center gap-2 shrink-0 whitespace-nowrap px-4 sm:px-5 py-2.5 rounded-full text-sm font-bold transition-opacity hover:opacity-85"
             style={{ background: "#3DDB87", color: "#0A0A0F" }}
           >
             <span className="text-base leading-none">+</span> 새 목표 추가
@@ -268,12 +268,12 @@ export default function GoalsPage() {
         </div>
 
         {/* 탭 */}
-        <div className="flex items-center gap-2 px-8 pt-6">
+        <div className="flex items-center gap-2 px-4 sm:px-8 pt-4 sm:pt-6 overflow-x-auto">
           {TABS.map(({ key, label, count }) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className="px-4 py-1.5 rounded-full text-sm font-medium transition-all"
+              className="px-4 py-1.5 rounded-full text-sm font-medium transition-all shrink-0 whitespace-nowrap"
               style={{
                 background: tab === key ? "#3DDB87" : "transparent",
                 color: tab === key ? "#0A0A0F" : "var(--text-muted)",
@@ -286,7 +286,7 @@ export default function GoalsPage() {
         </div>
 
         {/* 목록 */}
-        <div className="px-8 py-6 flex-1">
+        <div className="px-4 sm:px-8 py-4 sm:py-6 flex-1">
           {loading ? (
             <div className="flex items-center justify-center h-64">
               <div
@@ -314,7 +314,7 @@ export default function GoalsPage() {
               )}
             </div>
           ) : (
-            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }}>
+            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))" }}>
               {filtered.map((g) => (
                 <GoalCard key={g.id} goal={g} onComplete={handleComplete} onDelete={handleDelete} />
               ))}
@@ -414,7 +414,7 @@ export default function GoalsPage() {
               </div>
 
               {/* 기간 */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
                     시작일
