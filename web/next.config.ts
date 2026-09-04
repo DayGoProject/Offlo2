@@ -11,15 +11,15 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   // HTTPS 강제 (1년)
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
-  // XSS 방어 핵심 — Firebase + 스포카 폰트(jsDelivr) 허용
+  // XSS 방어 핵심 — Firebase 허용. 폰트는 self-host라 외부 출처가 필요 없다.
   {
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
       // Next.js 런타임·Framer Motion에 unsafe-inline/eval 필요
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.gstatic.com https://apis.google.com",
-      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-      "font-src 'self' https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self'",
       // 로컬 프리뷰(blob), 프로필 이미지(data)
       "img-src 'self' data: blob: https://lh3.googleusercontent.com",
       // Firebase Auth·Firestore

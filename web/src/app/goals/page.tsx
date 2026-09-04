@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import AppSidebar from "@/components/AppSidebar";
+import { fmt, fmtDateShort } from "@/lib/format";
 
 /* ── 타입 ──────────────────────────────────────────────────────── */
 
@@ -20,19 +21,6 @@ interface Goal {
 type Tab = "active" | "completed" | "all";
 
 /* ── 유틸 ──────────────────────────────────────────────────────── */
-
-function fmt(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h > 0 && m > 0) return `${h}시간 ${m}분`;
-  if (h > 0) return `${h}시간`;
-  return `${m}분`;
-}
-
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}.${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function dday(endDateStr: string, status: string): string {
   if (status === "completed") return "완료";
@@ -101,7 +89,7 @@ function GoalCard({
           {fmt(goal.targetMinutes)} 이하/일
         </span>
         <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-          {fmtDate(goal.startDate)} ~ {fmtDate(goal.endDate)}
+          {fmtDateShort(goal.startDate)} ~ {fmtDateShort(goal.endDate)}
         </span>
         <span
           className="text-xs font-semibold ml-auto"
@@ -164,10 +152,16 @@ export default function GoalsPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const token = await user.getIdToken();
-      const res = await fetch("/api/goals", { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setGoals((await res.json()).goals ?? []);
-      setLoading(false);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/goals", { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) setGoals((await res.json()).goals ?? []);
+      } catch (e) {
+        // 실패해도 스켈레톤이 영원히 남지 않도록 finally에서 반드시 푼다
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [user]);
 

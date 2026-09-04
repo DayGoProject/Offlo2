@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import AppSidebar from "@/components/AppSidebar";
+import Card from "@/components/ui/Card";
+import { fmtDate } from "@/lib/format";
 import { ALL_BADGES, getBadgeEmoji } from "@/lib/badge-utils";
 import { shareBadge, MAX_POST_LENGTH } from "@/services/community";
 
@@ -14,22 +16,6 @@ interface Badge {
   shared: boolean;
 }
 
-
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={`rounded-2xl p-5 ${className}`}
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
-    >
-      {children}
-    </div>
-  );
-}
 
 export default function BadgesPage() {
   const { user, loading: authLoading } = useAuth();
@@ -69,10 +55,16 @@ export default function BadgesPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const token = await user.getIdToken();
-      const res = await fetch("/api/badges", { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setBadges((await res.json()).badges ?? []);
-      setLoading(false);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/badges", { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) setBadges((await res.json()).badges ?? []);
+      } catch (e) {
+        // 실패해도 스켈레톤이 영원히 남지 않도록 finally에서 반드시 푼다
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [user]);
 

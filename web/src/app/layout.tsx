@@ -37,11 +37,8 @@ export default function RootLayout({
       <head>
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/@spoqa/spoqa-han-sans/css/SpoqaHanSansNeo.css"
-        />
+        {/* 폰트는 public/fonts에서 직접 서빙한다 (globals.css의 @font-face).
+            기존 jsDelivr stylesheet는 URL이 404라 폰트가 아예 적용되지 않고 있었다. */}
       </head>
       <body>
         <ThemeProvider>

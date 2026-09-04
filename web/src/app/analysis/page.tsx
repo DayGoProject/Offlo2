@@ -70,7 +70,7 @@ export default function AnalysisPage() {
         kstMonday.setUTCHours(0, 0, 0, 0);
 
         const res = await fetch(
-          `/api/analyses?periodType=daily&limit=${WEEKLY_THRESHOLD}`,
+          `/api/analyses?periodType=daily&limit=${WEEKLY_THRESHOLD}&includeApps=1`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!res.ok) return;
@@ -178,7 +178,7 @@ export default function AnalysisPage() {
 
       // 이번 주 일간 분석 전체 데이터 조회 (apps 포함)
       const res = await fetch(
-        `/api/analyses?periodType=daily&limit=${WEEKLY_THRESHOLD}`,
+        `/api/analyses?periodType=daily&limit=${WEEKLY_THRESHOLD}&includeApps=1`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) throw new Error("기록을 불러오는 중 오류가 발생했습니다.");

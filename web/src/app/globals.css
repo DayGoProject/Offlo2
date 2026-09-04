@@ -1,5 +1,38 @@
 @import "tailwindcss";
 
+/* ── 스포카 한 산스 네오 (self-host) ────────────────────────────
+   Copyright (c) 2020 Spoqa, Inc. — MIT License
+   https://github.com/spoqa/spoqa-han-sans (v3.3.0 Subset)
+
+   코드가 실제로 쓰는 굵기는 400·500·700뿐이다.
+   font-semibold(600)는 700으로, font-extrabold(800)도 700으로 매칭되므로
+   Thin(100)·Light(300)은 받지 않는다 (880KB → 544KB).
+   ──────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Spoqa Han Sans Neo";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: local("Spoqa Han Sans Neo Regular"),
+       url("/fonts/SpoqaHanSansNeo-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Spoqa Han Sans Neo";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: local("Spoqa Han Sans Neo Medium"),
+       url("/fonts/SpoqaHanSansNeo-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Spoqa Han Sans Neo";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: local("Spoqa Han Sans Neo Bold"),
+       url("/fonts/SpoqaHanSansNeo-Bold.woff2") format("woff2");
+}
+
 /* .dark 클래스 기반 다크모드 활성화 */
 @custom-variant dark (&:where(.dark, .dark *));
 

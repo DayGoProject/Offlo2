@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/services/firebase";
+import { relTime } from "@/lib/format";
 
 /* ── 타입 ─────────────────────────────────────────────────────── */
 
@@ -36,19 +37,6 @@ const TYPE_EMOJI: Record<NotificationType, string> = {
   daily_reminder: "⏰",
   post_comment: "💬",
 };
-
-function relTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return "방금";
-  if (min < 60) return `${min}분 전`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}시간 전`;
-  const day = Math.floor(hr / 24);
-  if (day < 7) return `${day}일 전`;
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
 
 /* ── 알림 센터 ─────────────────────────────────────────────────── */
 

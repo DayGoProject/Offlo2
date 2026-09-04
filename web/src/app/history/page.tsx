@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine,
-} from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import AppSidebar from "@/components/AppSidebar";
+import Card from "@/components/ui/Card";
+import { fmt, fmtDate } from "@/lib/format";
 
 interface Analysis {
   id: string;
@@ -20,19 +20,6 @@ interface Analysis {
 
 type Filter = "all" | "daily" | "weekly";
 
-function fmt(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h > 0 && m > 0) return `${h}시간 ${m}분`;
-  if (h > 0) return `${h}시간`;
-  return `${m}분`;
-}
-
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
-}
-
 function ScoreBadge({ score }: { score: number }) {
   const color = score >= 70 ? "#3DDB87" : score >= 40 ? "#facc15" : "#f87171";
   return (
@@ -43,29 +30,11 @@ function ScoreBadge({ score }: { score: number }) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function TrendTooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  const color = d.score >= 70 ? "#3DDB87" : d.score >= 40 ? "#facc15" : "#f87171";
-  return (
-    <div className="rounded-xl px-3 py-2 text-xs shadow-lg"
-      style={{ background: "#1a1a26", border: "1px solid rgba(255,255,255,0.1)" }}>
-      <p style={{ color: "rgba(255,255,255,0.4)" }}>{d.label}</p>
-      <p className="font-bold mt-0.5" style={{ color }}>{d.score}점</p>
-    </div>
-  );
-}
-
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={`rounded-2xl p-5 ${className}`}
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
-    >
-      {children}
-    </div>
-  );
-}
+// recharts 지연 로딩 — 정적 import면 기록 페이지 초기 JS가 ~107kB 늘어난다
+const ScoreTrendChart = dynamic(() => import("@/components/charts/ScoreTrendChart"), {
+  ssr: false,
+  loading: () => (<div className="w-full h-full flex items-center justify-center"><div className="w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: "rgba(61,219,135,0.2)", borderTopColor: "#3DDB87" }} /></div>),
+});
 
 export default function HistoryPage() {
   const { user, loading: authLoading } = useAuth();
@@ -81,12 +50,18 @@ export default function HistoryPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const token = await user.getIdToken();
-      const res = await fetch("/api/analyses?limit=100", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) setAnalyses((await res.json()).analyses ?? []);
-      setLoading(false);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/analyses?limit=100", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) setAnalyses((await res.json()).analyses ?? []);
+      } catch (e) {
+        // 실패해도 스켈레톤이 영원히 남지 않도록 finally에서 반드시 푼다
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, [user]);
 
@@ -160,22 +135,7 @@ export default function HistoryPage() {
                 <span className="text-xs" style={{ color: "var(--text-muted)" }}>최근 {trendData.length}개</span>
               </div>
               <div style={{ height: 160 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData} margin={{ top: 4, right: 8, bottom: 0, left: -28 }}>
-                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.3)" }}
-                      axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 10, fill: "rgba(255,255,255,0.25)" }}
-                      axisLine={false} tickLine={false} />
-                    <Tooltip content={<TrendTooltip />} cursor={{ stroke: "rgba(255,255,255,0.08)" }} />
-                    <ReferenceLine y={70} stroke="rgba(61,219,135,0.2)" strokeDasharray="4 4" />
-                    <Line
-                      type="monotone" dataKey="score"
-                      stroke="#3DDB87" strokeWidth={2}
-                      dot={{ fill: "#3DDB87", r: 3, strokeWidth: 0 }}
-                      activeDot={{ r: 5, fill: "#3DDB87", strokeWidth: 0 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <ScoreTrendChart data={trendData} />
               </div>
               <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
                 점선: 70점 기준선 (좋음)

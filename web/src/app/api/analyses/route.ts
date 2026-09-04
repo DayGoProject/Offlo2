@@ -16,6 +16,9 @@ export async function GET(req: Request): Promise<Response> {
     const periodType = url.searchParams.get("periodType"); // "daily" | "weekly" | null
     const limitParam = url.searchParams.get("limit");
     const limit = Math.min(parseInt(limitParam ?? "20", 10) || 20, 100); // 최대 100
+    // apps는 주간 분석 프롬프트를 만들 때만 필요하다. 목록 화면(기록·대시보드)은
+    // 쓰지 않으므로 기본으로 빼서 응답 크기를 줄인다.
+    const includeApps = url.searchParams.get("includeApps") === "1";
 
     const analyses = await prisma.analysis.findMany({
       where: {
@@ -31,7 +34,7 @@ export async function GET(req: Request): Promise<Response> {
         detoxScore: true,
         isPremium: true,
         createdAt: true,
-        apps: true, // 주간 분석 프롬프트 빌드에 필요
+        ...(includeApps ? { apps: true } : {}),
       },
     });
 

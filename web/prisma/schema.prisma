@@ -41,6 +41,12 @@ model Analysis {
   isPremium           Boolean  @default(false)
   sourceAnalysisIds   Json?
   createdAt           DateTime @default(now())
+
+  // 목록 조회(userId + periodType? + createdAt desc)와 일간 중복 체크를 함께 커버한다.
+  // count({ userId })도 leftmost prefix로 탄다.
+  @@index([userId, periodType, createdAt])
+  // /api/ranking의 groupBy — userId 조건이 없어 위 인덱스를 못 쓴다
+  @@index([periodType, createdAt])
 }
 
 model Goal {
@@ -53,6 +59,8 @@ model Goal {
   endDate       DateTime
   status        String   @default("active")
   createdAt     DateTime @default(now())
+
+  @@index([userId, status, createdAt])
 }
 
 model Badge {
@@ -62,6 +70,8 @@ model Badge {
   name     String
   earnedAt DateTime @default(now())
   shared   Boolean  @default(false)
+
+  @@index([userId, earnedAt])
 }
 
 /* ── 11단계: 소셜 · 커뮤니티 ──────────────────────────────── */
@@ -80,6 +90,7 @@ model Post {
   likes        PostLike[]
 
   @@index([createdAt])
+  @@index([userId])
 }
 
 model Comment {
@@ -92,6 +103,7 @@ model Comment {
   createdAt DateTime @default(now())
 
   @@index([postId, createdAt])
+  @@index([userId])
 }
 
 model PostLike {
@@ -103,4 +115,5 @@ model PostLike {
   createdAt DateTime @default(now())
 
   @@unique([postId, userId])
+  @@index([userId])
 }

@@ -12,18 +12,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/services/auth";
 import { useTheme } from "@/context/ThemeContext";
+import Card from "@/components/ui/Card";
 import AppSidebar from "@/components/AppSidebar";
-
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={`rounded-2xl p-6 ${className}`}
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
-    >
-      {children}
-    </div>
-  );
-}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -180,7 +170,7 @@ export default function SettingsPage() {
           {/* 프로필 */}
           <div>
             <SectionTitle>프로필</SectionTitle>
-            <Card>
+            <Card pad="p-6">
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-14 h-14 rounded-full bg-brand/20 border border-brand/40 flex items-center justify-center overflow-hidden flex-shrink-0">
                   {user.photoURL ? (
@@ -253,7 +243,7 @@ export default function SettingsPage() {
           {isEmailUser && (
             <div>
               <SectionTitle>비밀번호 변경</SectionTitle>
-              <Card>
+              <Card pad="p-6">
                 <form onSubmit={handleChangePw} className="space-y-3">
                   {[
                     { label: "현재 비밀번호", val: currentPw, set: setCurrentPw, ph: "현재 비밀번호" },
@@ -306,7 +296,7 @@ export default function SettingsPage() {
           {/* 화면 */}
           <div>
             <SectionTitle>화면</SectionTitle>
-            <Card>
+            <Card pad="p-6">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>테마</p>
@@ -346,7 +336,7 @@ export default function SettingsPage() {
           {/* 계정 */}
           <div>
             <SectionTitle>계정</SectionTitle>
-            <Card className="space-y-4">
+            <Card pad="p-6" className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>로그아웃</p>

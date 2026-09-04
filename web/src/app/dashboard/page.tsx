@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { doc, getDoc } from "firebase/firestore";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/services/auth";
 import { db } from "@/services/firebase";
 import AppSidebar from "@/components/AppSidebar";
+import type { WeekPoint } from "@/components/charts/WeeklyBarChart";
+import Card from "@/components/ui/Card";
+import { fmt, relDate } from "@/lib/format";
 import { getPlantLevel, getAnimalStage, getAnimalEmoji, type AnimalTypeId } from "@/lib/garden-utils";
 
 /* ── 타입 ─────────────────────────────────────────────────────── */
@@ -28,29 +31,7 @@ interface Goal {
   endDate: string;
 }
 
-interface WeekPoint {
-  day: string;
-  minutes: number;
-  isToday: boolean;
-}
-
 /* ── 유틸 ─────────────────────────────────────────────────────── */
-
-function fmt(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h > 0 && m > 0) return `${h}시간 ${m}분`;
-  if (h > 0) return `${h}시간`;
-  return `${m}분`;
-}
-
-function relDate(iso: string): string {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  if (diff === 0) return "오늘";
-  if (diff === 1) return "어제";
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
 
 function buildWeekData(analyses: Analysis[]): WeekPoint[] {
   const DAY = ["일", "월", "화", "수", "목", "금", "토"];
@@ -120,34 +101,20 @@ function GaugeArc({ value, max, size = 220 }: { value: number; max: number; size
 
 /* ── Recharts 커스텀 툴팁 ──────────────────────────────────────── */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function BarTooltip({ active, payload, label }: any) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-xl px-3 py-2 text-xs shadow-lg"
-      style={{ background: "#1a1a26", border: "1px solid rgba(255,255,255,0.1)" }}>
-      <p style={{ color: "rgba(255,255,255,0.4)" }}>{label}</p>
-      <p className="font-bold text-brand mt-0.5">{fmt(payload[0].value)}</p>
-    </div>
-  );
-}
-
 /* ── 카드 래퍼 ─────────────────────────────────────────────────── */
-
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`rounded-2xl p-5 ${className}`}
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}>
-      {children}
-    </div>
-  );
-}
 
 /* ── 스켈레톤 ──────────────────────────────────────────────────── */
 
 function Skeleton({ h = "h-4", w = "w-full", className = "" }: { h?: string; w?: string; className?: string }) {
   return <div className={`${h} ${w} rounded-lg animate-pulse ${className}`} style={{ background: "var(--bg-bar)" }} />;
 }
+
+// recharts는 클라이언트 전용이라 SSR로 얻을 게 없다. 정적 import로 두면
+// 대시보드 초기 JS가 ~107kB 늘어나므로 지연 로딩한다.
+const WeeklyBarChart = dynamic(() => import("@/components/charts/WeeklyBarChart"), {
+  ssr: false,
+  loading: () => (<div className="w-full h-full flex items-center justify-center"><div className="w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: "rgba(61,219,135,0.2)", borderTopColor: "#3DDB87" }} /></div>),
+});
 
 /* ── 메인 페이지 ───────────────────────────────────────────────── */
 
@@ -181,22 +148,28 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const token = await user.getIdToken();
-      const h = { Authorization: `Bearer ${token}` };
-      const [aRes, gRes, plantSnap, animalSnap] = await Promise.all([
-        fetch("/api/analyses?limit=10", { headers: h }),
-        fetch("/api/goals?status=active", { headers: h }),
-        getDoc(doc(db, "users", user.uid, "garden", "plant")),
-        getDoc(doc(db, "users", user.uid, "garden", "animal")),
-      ]);
-      if (aRes.ok) setAnalyses((await aRes.json()).analyses ?? []);
-      if (gRes.ok) setGoals((await gRes.json()).goals ?? []);
-      setDetoxMin(plantSnap.exists() ? (plantSnap.data()?.totalDetoxMinutes ?? 0) : 0);
-      if (animalSnap.exists()) {
-        const d = animalSnap.data();
-        setAnimalData({ type: d.type ?? null, streak: d.streak ?? 0 });
+      try {
+        const token = await user.getIdToken();
+        const h = { Authorization: `Bearer ${token}` };
+        const [aRes, gRes, plantSnap, animalSnap] = await Promise.all([
+          fetch("/api/analyses?limit=10", { headers: h }),
+          fetch("/api/goals?status=active", { headers: h }),
+          getDoc(doc(db, "users", user.uid, "garden", "plant")),
+          getDoc(doc(db, "users", user.uid, "garden", "animal")),
+        ]);
+        if (aRes.ok) setAnalyses((await aRes.json()).analyses ?? []);
+        if (gRes.ok) setGoals((await gRes.json()).goals ?? []);
+        setDetoxMin(plantSnap.exists() ? (plantSnap.data()?.totalDetoxMinutes ?? 0) : 0);
+        if (animalSnap.exists()) {
+          const d = animalSnap.data();
+          setAnimalData({ type: d.type ?? null, streak: d.streak ?? 0 });
+        }
+      } catch (e) {
+        // 실패해도 스켈레톤이 영원히 남지 않도록 finally에서 반드시 푼다
+        console.error(e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [user]);
 
@@ -379,23 +352,7 @@ export default function DashboardPage() {
               </div>
 
               <div style={{ height: 172 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weekData} barSize={22} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
-                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: "rgba(255,255,255,0.35)" }}
-                      axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={(v) => v === 0 ? "" : `${Math.floor(v / 60)}h`}
-                      tick={{ fontSize: 10, fill: "rgba(255,255,255,0.25)" }}
-                      axisLine={false} tickLine={false} domain={[0, maxMin]} />
-                    <Tooltip content={<BarTooltip />} cursor={{ fill: "rgba(255,255,255,0.02)" }} />
-                    <Bar dataKey="minutes" radius={[5, 5, 0, 0]}>
-                      {weekData.map((d, i) => (
-                        <Cell key={i}
-                          fill={d.isToday ? "#3DDB87" : d.minutes > 0 ? "rgba(61,219,135,0.3)" : "rgba(255,255,255,0.04)"}
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <WeeklyBarChart data={weekData} maxMin={maxMin} />
               </div>
 
               <div className="flex items-center gap-4 mt-3">

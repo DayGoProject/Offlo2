@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { db } from "@/services/firebase";
 import AppSidebar from "@/components/AppSidebar";
+import Card from "@/components/ui/Card";
+import { fmt } from "@/lib/format";
 
 const Animal3D = dynamic(() => import("@/components/garden/Animal3D"), { ssr: false });
 import {
@@ -30,14 +32,6 @@ interface AnimalData {
 }
 
 /* ── 유틸 ─────────────────────────────────────────────────── */
-
-function fmt(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h > 0 && m > 0) return `${h}시간 ${m}분`;
-  if (h > 0) return `${h}시간`;
-  return `${m}분`;
-}
 
 function daysSince(dateStr?: string): number {
   if (!dateStr) return 999;
@@ -495,15 +489,6 @@ function PlantSVG({ level }: { level: number }) {
 
 /* ── 카드 래퍼 ─────────────────────────────────────────────── */
 
-function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div className={`rounded-2xl p-6 ${className}`}
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}>
-      {children}
-    </div>
-  );
-}
-
 /* ── 메인 ──────────────────────────────────────────────────── */
 
 export default function GardenPage() {
@@ -522,16 +507,22 @@ export default function GardenPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const [plantSnap, animalSnap] = await Promise.all([
-        getDoc(doc(db, "users", user.uid, "garden", "plant")),
-        getDoc(doc(db, "users", user.uid, "garden", "animal")),
-      ]);
-      setPlant(plantSnap.exists() ? (plantSnap.data() as PlantData) : { totalDetoxMinutes: 0 });
-      if (animalSnap.exists()) {
-        const d = animalSnap.data();
-        setAnimal({ type: d.type ?? null, streak: d.streak ?? 0, lastAnalysisDate: d.lastAnalysisDate });
+      try {
+        const [plantSnap, animalSnap] = await Promise.all([
+          getDoc(doc(db, "users", user.uid, "garden", "plant")),
+          getDoc(doc(db, "users", user.uid, "garden", "animal")),
+        ]);
+        setPlant(plantSnap.exists() ? (plantSnap.data() as PlantData) : { totalDetoxMinutes: 0 });
+        if (animalSnap.exists()) {
+          const d = animalSnap.data();
+          setAnimal({ type: d.type ?? null, streak: d.streak ?? 0, lastAnalysisDate: d.lastAnalysisDate });
+        }
+      } catch (e) {
+        // 실패해도 스켈레톤이 영원히 남지 않도록 finally에서 반드시 푼다
+        console.error(e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [user]);
 
@@ -592,7 +583,7 @@ export default function GardenPage() {
             {/* 상단 2열: 식물 + 동물 요약 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* 반려 식물 */}
-              <Card>
+              <Card pad="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>반려 식물</h2>
@@ -644,7 +635,7 @@ export default function GardenPage() {
               </Card>
 
               {/* 동물 요약 카드 */}
-              <Card>
+              <Card pad="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h2 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>반려 동물</h2>
