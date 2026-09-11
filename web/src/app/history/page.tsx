@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import AppSidebar from "@/components/AppSidebar";
-import Card from "@/components/ui/Card";
-import { fmt, fmtDate } from "@/lib/format";
+import AppShell from "@/components/app/AppShell";
+import PageHeader, { Pill } from "@/components/app/PageHeader";
+import Segmented from "@/components/app/Segmented";
+import TrendLine from "@/components/charts/TrendLine";
+import { fmtHM, fmtDate, fmtDateShort } from "@/lib/format";
+
+interface AppUsage {
+  name?: string;
+  minutes?: number;
+}
 
 interface Analysis {
   id: string;
@@ -16,25 +22,42 @@ interface Analysis {
   detoxScore: number;
   createdAt: string;
   isPremium: boolean;
+  apps?: AppUsage[];
 }
 
 type Filter = "all" | "daily" | "weekly";
 
-function ScoreBadge({ score }: { score: number }) {
-  const color = score >= 70 ? "#3DDB87" : score >= 40 ? "#facc15" : "#f87171";
+/** 상위 앱 2개를 "인스타그램 · 유튜브" 형태로 */
+function topApps(a: Analysis): string {
+  if (a.periodType === "weekly") return "주간 종합 리포트";
+  if (!Array.isArray(a.apps) || a.apps.length === 0) return "—";
+  return [...a.apps]
+    .sort((x, y) => (y.minutes ?? 0) - (x.minutes ?? 0))
+    .slice(0, 2)
+    .map((x) => x.name)
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/* 열 너비를 상수로 묶는다. 헤더와 데이터 행이 같은 값을 공유해야
+   세로 라인이 어긋나지 않는다 — gap만으로는 정렬되지 않는다. */
+const COL = {
+  date: "w-[110px]",
+  type: "w-[64px]",
+  time: "w-[84px]",
+  score: "w-[70px]",
+};
+
+function HeadCell({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <span className="text-2xl font-extrabold" style={{ color }}>
-      {score}
+    <span
+      className={`text-[11px] leading-[14px] font-semibold shrink-0 ${className}`}
+      style={{ color: "var(--text-muted)", letterSpacing: "0.1em" }}
+    >
+      {children}
     </span>
   );
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-// recharts 지연 로딩 — 정적 import면 기록 페이지 초기 JS가 ~107kB 늘어난다
-const ScoreTrendChart = dynamic(() => import("@/components/charts/ScoreTrendChart"), {
-  ssr: false,
-  loading: () => (<div className="w-full h-full flex items-center justify-center"><div className="w-6 h-6 rounded-full border-2 animate-spin" style={{ borderColor: "rgba(61,219,135,0.2)", borderTopColor: "#3DDB87" }} /></div>),
-});
 
 export default function HistoryPage() {
   const { user, loading: authLoading } = useAuth();
@@ -52,7 +75,8 @@ export default function HistoryPage() {
     (async () => {
       try {
         const token = await user.getIdToken();
-        const res = await fetch("/api/analyses?limit=100", {
+        // 표의 "상위 앱" 열이 apps를 쓴다 — 목록 API의 옵트인 파라미터로 받는다
+        const res = await fetch("/api/analyses?limit=100&includeApps=1", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) setAnalyses((await res.json()).analyses ?? []);
@@ -69,174 +93,156 @@ export default function HistoryPage() {
 
   const filtered = filter === "all" ? analyses : analyses.filter((a) => a.periodType === filter);
 
-  const avg = filtered.length
-    ? Math.round(filtered.reduce((s, a) => s + a.detoxScore, 0) / filtered.length)
-    : null;
-
-  /* 트렌드 차트 — 최근 20개 역순 정렬 */
-  const trendData = [...filtered]
+  /* 추이 — 오래된 → 최신 순, 최근 20개 */
+  const trend = [...filtered]
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .slice(-20)
-    .map((a) => ({
-      label: fmtDate(a.createdAt),
-      score: a.detoxScore,
-      type: a.periodType,
-    }));
+    .map((a) => ({ label: fmtDateShort(a.createdAt), score: a.detoxScore }));
+
+  const latest = trend[trend.length - 1]?.score ?? null;
+  // 최근 7건의 변화폭 — 첫 값 대비 마지막 값
+  const recent = trend.slice(-7);
+  const delta = recent.length >= 2 ? recent[recent.length - 1].score - recent[0].score : null;
 
   return (
-    <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
-      <AppSidebar />
+    <AppShell>
+      <PageHeader
+        eyebrow={loading ? "불러오는 중" : `총 ${analyses.length}개의 기록`}
+        title="분석 기록"
+        actions={
+          <>
+            <Segmented
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { value: "all", label: "전체" },
+                { value: "daily", label: "일간" },
+                { value: "weekly", label: "주간" },
+              ]}
+            />
+            <Pill href="/analysis" variant="primary">
+              오늘 분석하기
+            </Pill>
+          </>
+        }
+      />
 
-      <div className="lg:ml-56 pt-14 lg:pt-0 flex-1 flex flex-col min-h-screen overflow-x-hidden">
-        {/* 헤더 */}
+      {/* ── 점수 추이 ── */}
+      <section
+        className="flex flex-col gap-[18px] w-full px-[22px] sm:px-7 py-6 rounded-card"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
+      >
+        <div className="flex items-center justify-between gap-3 w-full">
+          <h2 className="text-[15px] leading-[18px] font-semibold tracking-[-0.01em]" style={{ color: "var(--text-primary)" }}>
+            디톡스 점수 추이
+          </h2>
+          {latest !== null && (
+            <div className="flex items-baseline gap-2 shrink-0">
+              <span className="num text-[22px] leading-7" style={{ color: "var(--text-primary)", letterSpacing: "-0.03em" }}>
+                {latest}
+              </span>
+              {delta !== null && (
+                <span
+                  className="text-xs font-medium"
+                  style={{ color: delta >= 0 ? "var(--color-bloom)" : "var(--danger)" }}
+                >
+                  최근 {recent.length}일 {delta >= 0 ? "+" : ""}
+                  {delta}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="h-[190px] w-full rounded-lg animate-pulse" style={{ background: "var(--bg-bar)" }} />
+        ) : trend.length < 2 ? (
+          <p className="py-16 text-center text-[13px]" style={{ color: "var(--text-muted)" }}>
+            기록이 2건 이상 쌓이면 추이가 그려져요
+          </p>
+        ) : (
+          <TrendLine data={trend} />
+        )}
+      </section>
+
+      {/* ── 기록 표 ── */}
+      <section
+        className="flex flex-col w-full rounded-card overflow-hidden"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
+      >
+        {/* 표 헤더는 데스크톱에서만. 모바일에선 행 자체가 카드처럼 읽힌다 */}
         <div
-          className="flex items-center justify-between px-4 sm:px-7 py-4 sm:py-5 border-b"
-          style={{ borderColor: "var(--border-card)" }}
+          className="hidden lg:flex items-center gap-4 w-full px-[26px] py-[15px]"
+          style={{ borderBottom: "1px solid var(--border-card)" }}
         >
-          <div>
-            <h1 className="text-xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              분석 기록
-            </h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              총 {loading ? "—" : `${analyses.length}건`}의 분석
+          <HeadCell className={COL.date}>날짜</HeadCell>
+          <HeadCell className={COL.type}>유형</HeadCell>
+          <HeadCell className={COL.time}>사용시간</HeadCell>
+          <HeadCell className="flex-1">상위 앱</HeadCell>
+          <HeadCell className={`${COL.score} text-right`}>점수</HeadCell>
+        </div>
+
+        {loading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="px-[26px] py-4" style={{ borderBottom: "1px solid var(--border-card)" }}>
+              <div className="h-5 w-full rounded animate-pulse" style={{ background: "var(--bg-bar)" }} />
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 px-6 py-20">
+            <p className="text-[15px]" style={{ color: "var(--text-primary)" }}>
+              {filter === "all" ? "아직 기록이 없어요" : `${filter === "daily" ? "일간" : "주간"} 기록이 없어요`}
             </p>
+            <Pill href="/analysis" variant="accent">
+              분석 시작하기
+            </Pill>
           </div>
-          <Link
-            href="/analysis"
-            className="text-sm font-bold py-2 px-5 rounded-full transition-opacity hover:opacity-80"
-            style={{ background: "#3DDB87", color: "#0A0A0F" }}
-          >
-            새 분석
-          </Link>
-        </div>
+        ) : (
+          filtered.map((a, i) => (
+            <Link
+              key={a.id}
+              href={`/analysis/result/${a.id}`}
+              className="flex flex-col lg:flex-row lg:items-center gap-1 lg:gap-4 w-full px-[22px] sm:px-[26px] py-4 transition-colors hover:bg-chalk/[0.02]"
+              style={{
+                borderBottom: i === filtered.length - 1 ? undefined : "1px solid var(--border-card)",
+                // 가장 최근 기록 한 줄만 강조한다
+                background: i === 0 && filter === "all" ? "var(--accent-soft)" : undefined,
+              }}
+            >
+              <span className={`num text-[13px] leading-4 shrink-0 ${COL.date}`} style={{ color: "var(--text-primary)", letterSpacing: 0 }}>
+                {fmtDate(a.createdAt)}
+              </span>
 
-        <div className="p-4 sm:p-6 flex-1 space-y-5">
-          {/* 요약 카드 */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { label: "전체 분석", value: loading ? "—" : `${analyses.length}회` },
-              { label: "평균 디톡스 점수", value: avg !== null ? `${avg}점` : "—" },
-              { label: "주간 분석", value: loading ? "—" : `${analyses.filter((a) => a.periodType === "weekly").length}회` },
-            ].map(({ label, value }) => (
-              <Card key={label}>
-                <p className="text-xs mb-1" style={{ color: "var(--text-muted)" }}>{label}</p>
-                <p className="text-2xl font-extrabold text-brand">{value}</p>
-              </Card>
-            ))}
-          </div>
-
-          {/* 점수 트렌드 차트 */}
-          {!loading && trendData.length >= 2 && (
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                  디톡스 점수 변화
-                </h3>
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>최근 {trendData.length}개</span>
-              </div>
-              <div style={{ height: 160 }}>
-                <ScoreTrendChart data={trendData} />
-              </div>
-              <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
-                점선: 70점 기준선 (좋음)
-              </p>
-            </Card>
-          )}
-
-          {/* 필터 탭 */}
-          <div className="flex gap-2">
-            {(["all", "daily", "weekly"] as Filter[]).map((f) => {
-              const label = f === "all" ? "전체" : f === "daily" ? "일간" : "주간";
-              const active = filter === f;
-              return (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className="text-sm font-semibold px-4 py-1.5 rounded-full transition-all"
-                  style={{
-                    background: active ? "#3DDB87" : "var(--bg-subtle)",
-                    color: active ? "#0A0A0F" : "var(--text-secondary)",
-                    border: active ? "none" : "1px solid var(--border-card)",
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* 목록 */}
-          {loading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl h-20 animate-pulse"
-                  style={{ background: "var(--bg-bar)" }}
-                />
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <Card className="flex flex-col items-center justify-center py-20 gap-4">
-              <span className="text-5xl">📊</span>
-              <p className="text-base font-bold" style={{ color: "var(--text-primary)" }}>
-                {filter === "all" ? "분석 기록이 없어요" : `${filter === "daily" ? "일간" : "주간"} 분석 기록이 없어요`}
-              </p>
-              <Link
-                href="/analysis"
-                className="text-sm font-bold py-2 px-5 rounded-full transition-opacity hover:opacity-80"
-                style={{ background: "#3DDB87", color: "#0A0A0F" }}
+              <span
+                className={`text-xs leading-4 shrink-0 ${COL.type}`}
+                style={{ color: i === 0 && filter === "all" ? "var(--color-bloom)" : "var(--text-muted)" }}
               >
-                분석 시작하기
-              </Link>
-            </Card>
-          ) : (
-            <div className="space-y-3">
-              {filtered.map((a) => (
-                <Link
-                  key={a.id}
-                  href={`/analysis/result/${a.id}`}
-                  className="flex items-center justify-between gap-3 px-4 sm:px-5 py-4 rounded-2xl transition-colors hover:opacity-80"
-                  style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
-                >
-                  <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
-                      style={{ background: "rgba(61,219,135,0.1)" }}
-                    >
-                      {a.periodType === "weekly" ? "📊" : "📱"}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                        {a.periodType === "weekly" ? "주간 분석" : "일간 분석"}
-                        {a.isPremium && (
-                          <span className="ml-2 text-xs font-bold px-1.5 py-0.5 rounded-full"
-                            style={{ background: "rgba(61,219,135,0.15)", color: "#3DDB87" }}>
-                            PRO
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                        {fmtDate(a.createdAt)} · {fmt(a.totalMinutes)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-xs mb-0.5" style={{ color: "var(--text-muted)" }}>디톡스 점수</p>
-                      <ScoreBadge score={a.detoxScore} />
-                    </div>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                      style={{ color: "var(--text-muted)" }}>
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+                {a.periodType === "weekly" ? "주간" : "일간"}
+                {a.isPremium && <span className="ml-1.5 num text-[10px]">PRO</span>}
+              </span>
+
+              <span className={`num text-[13px] leading-4 shrink-0 ${COL.time}`} style={{ color: "var(--text-primary)", letterSpacing: 0 }}>
+                {fmtHM(a.totalMinutes)}
+              </span>
+
+              <span className="text-[13px] leading-4 flex-1 min-w-0 truncate" style={{ color: "var(--text-muted)" }}>
+                {topApps(a)}
+              </span>
+
+              <span
+                className={`num text-base leading-5 shrink-0 lg:text-right ${COL.score}`}
+                style={{
+                  color: i === 0 && filter === "all" ? "var(--color-bloom)" : "var(--text-primary)",
+                  fontWeight: 500,
+                  letterSpacing: 0,
+                }}
+              >
+                {a.detoxScore}
+              </span>
+            </Link>
+          ))
+        )}
+      </section>
+    </AppShell>
   );
 }

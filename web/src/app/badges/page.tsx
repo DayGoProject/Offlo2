@@ -2,11 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
-import AppSidebar from "@/components/AppSidebar";
-import Card from "@/components/ui/Card";
+import { db } from "@/services/firebase";
+import AppShell from "@/components/app/AppShell";
+import PageHeader, { Pill } from "@/components/app/PageHeader";
+import Modal from "@/components/app/Modal";
+import Field, { ErrorNote, inputStyle } from "@/components/app/Field";
+import BadgeIcon from "@/components/app/BadgeIcon";
 import { fmtDate } from "@/lib/format";
-import { ALL_BADGES, getBadgeEmoji } from "@/lib/badge-utils";
+import { ALL_BADGES, getBadgeDef, type BadgeDef } from "@/lib/badge-utils";
 import { shareBadge, MAX_POST_LENGTH } from "@/services/community";
 
 interface Badge {
@@ -16,11 +21,41 @@ interface Badge {
   shared: boolean;
 }
 
+interface Analysis {
+  periodType: "daily" | "weekly";
+  createdAt: string;
+}
+
+/** 잠긴 배지의 진행도 — 0~1과 남은 만큼을 설명하는 한 줄 */
+function lockedProgress(
+  name: string,
+  s: { total: number; weekly: number; dailyThisWeek: number; streak: number },
+): { ratio: number; note: string } {
+  switch (name) {
+    case "첫 분석":
+      return { ratio: Math.min(1, s.total), note: "AI 분석 1회면 획득" };
+    case "주간 분석 완료":
+      return {
+        ratio: Math.min(1, s.dailyThisWeek / 7),
+        note: `이번 주 일간 분석 ${s.dailyThisWeek} / 7회`,
+      };
+    case "7일 연속":
+      return {
+        ratio: Math.min(1, s.streak / 7),
+        note: s.streak > 0 ? `${7 - s.streak}일 더 이어가면 획득` : "연속 기록을 시작해 보세요",
+      };
+    case "목표 달성":
+      return { ratio: 0, note: "목표를 하나 완료하면 획득" };
+    default:
+      return { ratio: 0, note: getBadgeDef(name)?.requirement ?? "" };
+  }
+}
 
 export default function BadgesPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [badges, setBadges] = useState<Badge[]>([]);
+  const [stats, setStats] = useState({ total: 0, weekly: 0, dailyThisWeek: 0, streak: 0 });
   const [loading, setLoading] = useState(true);
 
   /* 배지 자랑하기 (11단계) */
@@ -28,25 +63,6 @@ export default function BadgesPage() {
   const [shareMsg, setShareMsg] = useState("");
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState("");
-
-  async function handleShare() {
-    if (!shareTarget || sharing) return;
-    setSharing(true);
-    setShareError("");
-    try {
-      await shareBadge(shareTarget.id, shareMsg.trim());
-      setBadges((prev) =>
-        prev.map((b) => (b.id === shareTarget.id ? { ...b, shared: true } : b))
-      );
-      setShareTarget(null);
-      setShareMsg("");
-      router.push("/community");
-    } catch (e) {
-      setShareError(e instanceof Error ? e.message : "공유하지 못했습니다.");
-    } finally {
-      setSharing(false);
-    }
-  }
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -57,8 +73,29 @@ export default function BadgesPage() {
     (async () => {
       try {
         const token = await user.getIdToken();
-        const res = await fetch("/api/badges", { headers: { Authorization: `Bearer ${token}` } });
-        if (res.ok) setBadges((await res.json()).badges ?? []);
+        const h = { Authorization: `Bearer ${token}` };
+        // 잠긴 배지의 진행도를 채우려면 분석 횟수와 연속 기록이 필요하다
+        const [bRes, aRes, animalSnap] = await Promise.all([
+          fetch("/api/badges", { headers: h }),
+          fetch("/api/analyses?limit=100", { headers: h }),
+          getDoc(doc(db, "users", user.uid, "garden", "animal")),
+        ]);
+
+        if (bRes.ok) setBadges((await bRes.json()).badges ?? []);
+
+        const list: Analysis[] = aRes.ok ? ((await aRes.json()).analyses ?? []) : [];
+        const monday = new Date();
+        monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+        monday.setHours(0, 0, 0, 0);
+
+        setStats({
+          total: list.length,
+          weekly: list.filter((a) => a.periodType === "weekly").length,
+          dailyThisWeek: list.filter(
+            (a) => a.periodType === "daily" && new Date(a.createdAt) >= monday,
+          ).length,
+          streak: animalSnap.exists() ? (animalSnap.data()?.streak ?? 0) : 0,
+        });
       } catch (e) {
         // 실패해도 스켈레톤이 영원히 남지 않도록 finally에서 반드시 푼다
         console.error(e);
@@ -68,217 +105,189 @@ export default function BadgesPage() {
     })();
   }, [user]);
 
+  async function handleShare() {
+    if (!shareTarget || sharing) return;
+    setSharing(true);
+    setShareError("");
+    try {
+      await shareBadge(shareTarget.id, shareMsg.trim());
+      setBadges((prev) => prev.map((b) => (b.id === shareTarget.id ? { ...b, shared: true } : b)));
+      setShareTarget(null);
+      setShareMsg("");
+      router.push("/community");
+    } catch (e) {
+      setShareError(e instanceof Error ? e.message : "공유하지 못했습니다.");
+    } finally {
+      setSharing(false);
+    }
+  }
+
   if (authLoading || !user) return null;
 
   const earnedNames = new Set(badges.map((b) => b.name));
-  const lockedBadges = ALL_BADGES.filter((b) => !earnedNames.has(b.name));
+  const locked: BadgeDef[] = ALL_BADGES.filter((b) => !earnedNames.has(b.name));
 
   return (
-    <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
-      <AppSidebar />
+    <AppShell>
+      <PageHeader
+        eyebrow={loading ? "불러오는 중" : `${badges.length}개 획득 · ${locked.length}개 남음`}
+        title="배지"
+        actions={
+          <Pill href="/community" variant="primary">
+            커뮤니티 가기
+          </Pill>
+        }
+      />
 
-      <div className="lg:ml-56 pt-14 lg:pt-0 flex-1 flex flex-col min-h-screen overflow-x-hidden">
-        {/* 헤더 */}
-        <div
-          className="flex items-center justify-between px-4 sm:px-7 py-4 sm:py-5 border-b"
-          style={{ borderColor: "var(--border-card)" }}
+      {/* ── 획득한 배지 ── */}
+      <section className="flex flex-col gap-3.5 w-full">
+        <h2
+          className="text-[11px] leading-[14px] font-semibold"
+          style={{ color: "var(--text-muted)", letterSpacing: "0.14em" }}
         >
-          <div>
-            <h1 className="text-xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              배지
-            </h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {loading ? "로딩 중…" : `${badges.length} / ${ALL_BADGES.length}개 획득`}
+          획득한 배지
+        </h2>
+
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-[195px] rounded-card animate-pulse" style={{ background: "var(--bg-bar)" }} />
+            ))}
+          </div>
+        ) : badges.length === 0 ? (
+          <div
+            className="flex flex-col gap-1.5 w-full px-[22px] sm:px-7 py-8 rounded-card"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
+          >
+            <p className="text-[15px]" style={{ color: "var(--text-primary)" }}>
+              아직 획득한 배지가 없어요
+            </p>
+            <p className="text-[13px] leading-5" style={{ color: "var(--text-muted)" }}>
+              분석을 한 번만 올려도 첫 배지가 열립니다.
             </p>
           </div>
-        </div>
-
-        <div className="p-4 sm:p-6 flex-1 space-y-8">
-
-          {/* ── 획득한 배지 ── */}
-          <section>
-            <h2 className="text-sm font-semibold mb-3" style={{ color: "var(--text-secondary)" }}>
-              획득한 배지
-            </h2>
-
-            {loading ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="rounded-2xl h-44 animate-pulse" style={{ background: "var(--bg-bar)" }} />
-                ))}
-              </div>
-            ) : badges.length === 0 ? (
-              <Card className="flex flex-col items-center justify-center py-12 gap-3">
-                <span className="text-5xl">🏅</span>
-                <p className="text-base font-bold" style={{ color: "var(--text-primary)" }}>
-                  아직 획득한 배지가 없어요
-                </p>
-                <p className="text-sm text-center leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                  AI 분석을 완료하고 목표를 달성하면<br />배지를 얻을 수 있어요.
-                </p>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {badges.map((badge) => {
-                  const def = ALL_BADGES.find((b) => b.name === badge.name);
-                  return (
-                    <Card key={badge.id} className="flex flex-col items-center text-center gap-3 py-6">
-                      <span className="text-5xl">{def?.emoji ?? "🏅"}</span>
-                      <div>
-                        <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-                          {badge.name}
-                        </p>
-                        {def && (
-                          <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                            {def.description}
-                          </p>
-                        )}
-                        <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
-                          {fmtDate(badge.earnedAt)}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          setShareTarget(badge);
-                          setShareMsg("");
-                          setShareError("");
-                        }}
-                        disabled={badge.shared}
-                        className="mt-auto px-3.5 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-45"
-                        style={{
-                          background: badge.shared ? "var(--bg-subtle)" : "rgba(61,219,135,0.10)",
-                          border: `1px solid ${badge.shared ? "var(--border-card)" : "rgba(61,219,135,0.25)"}`,
-                          color: badge.shared ? "var(--text-muted)" : "#3DDB87",
-                        }}
-                      >
-                        {badge.shared ? "공유함" : "자랑하기"}
-                      </button>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* ── 획득 가능한 배지 ── */}
-          {!loading && lockedBadges.length > 0 && (
-            <section>
-              <h2 className="text-sm font-semibold mb-3" style={{ color: "var(--text-secondary)" }}>
-                획득 가능한 배지
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {lockedBadges.map((badge) => (
-                  <div
-                    key={badge.name}
-                    className="rounded-2xl p-5 flex flex-col items-center text-center gap-3 py-6"
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {badges.map((b) => {
+              const def = getBadgeDef(b.name);
+              return (
+                <div
+                  key={b.id}
+                  className="flex flex-col gap-3.5 px-6 py-[22px] rounded-card"
+                  style={{ background: "var(--bg-card)", border: "1px solid rgba(61,219,135,0.2)" }}
+                >
+                  {def && <BadgeIcon badge={def} />}
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    <p className="text-[15px] leading-[18px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                      {b.name}
+                    </p>
+                    <p className="num text-xs leading-4" style={{ color: "var(--text-muted)", letterSpacing: 0 }}>
+                      {fmtDate(b.earnedAt)}
+                      <span className="font-sans"> 획득</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShareTarget(b);
+                      setShareMsg("");
+                      setShareError("");
+                    }}
+                    disabled={b.shared}
+                    className="flex items-center justify-center w-full h-[34px] rounded-full text-xs font-medium shrink-0 transition-opacity hover:opacity-75 disabled:opacity-45 disabled:cursor-default cursor-pointer"
                     style={{
-                      background: "var(--bg-card)",
-                      border: "1px solid var(--border-card)",
-                      opacity: 0.5,
+                      border: "1px solid var(--border-strong)",
+                      color: b.shared ? "var(--text-muted)" : "var(--text-primary)",
                     }}
                   >
-                    <div className="relative">
-                      <span className="text-5xl grayscale">{badge.emoji}</span>
-                      <span
-                        className="absolute -bottom-1 -right-1 text-lg"
-                        style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.5))" }}
-                      >
-                        🔒
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-                        {badge.name}
-                      </p>
-                      <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                        {badge.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      </div>
-
-      {/* ── 배지 자랑하기 모달 ── */}
-      {shareTarget && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-6"
-          style={{ background: "rgba(0,0,0,0.55)" }}
-          onClick={() => setShareTarget(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl p-6"
-            style={{
-              background: "var(--bg-card)",
-              border: "1px solid var(--border-card)",
-              boxShadow: "var(--shadow-card)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-extrabold" style={{ color: "var(--text-primary)" }}>
-                배지 자랑하기
-              </h2>
-              <button
-                onClick={() => setShareTarget(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-sm transition-colors hover:bg-white/[0.06]"
-                style={{ color: "var(--text-muted)" }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div
-              className="flex items-center gap-3 rounded-xl px-4 py-3 mb-4"
-              style={{ background: "rgba(61,219,135,0.08)", border: "1px solid rgba(61,219,135,0.2)" }}
-            >
-              <span className="text-2xl">{getBadgeEmoji(shareTarget.name)}</span>
-              <div>
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>커뮤니티에 공유할 배지</p>
-                <p className="text-sm font-bold" style={{ color: "#3DDB87" }}>{shareTarget.name}</p>
-              </div>
-            </div>
-
-            <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-              한마디 (선택)
-            </label>
-            <textarea
-              value={shareMsg}
-              onChange={(e) => setShareMsg(e.target.value)}
-              maxLength={MAX_POST_LENGTH}
-              rows={3}
-              placeholder="예: 드디어 7일 연속 달성했어요!"
-              className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
-              style={{
-                background: "var(--bg-subtle)",
-                border: "1px solid var(--border-card)",
-                color: "var(--text-primary)",
-              }}
-            />
-
-            <p className="text-xs mt-2" style={{ color: "var(--text-faint)" }}>
-              커뮤니티 피드에 이름과 함께 공개됩니다.
-            </p>
-
-            {shareError && (
-              <p className="mt-2 text-xs" style={{ color: "#f87171" }}>{shareError}</p>
-            )}
-
-            <button
-              onClick={handleShare}
-              disabled={sharing}
-              className="mt-5 w-full py-3 rounded-xl text-sm font-bold transition-opacity hover:opacity-85 disabled:opacity-50"
-              style={{ background: "#3DDB87", color: "#0A0A0F" }}
-            >
-              {sharing ? "공유 중…" : "커뮤니티에 공유"}
-            </button>
+                    {b.shared ? "공유함" : "자랑하기"}
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
+      </section>
+
+      {/* ── 잠긴 배지 ── */}
+      {!loading && locked.length > 0 && (
+        <section className="flex flex-col gap-3.5 w-full">
+          <h2
+            className="text-[11px] leading-[14px] font-semibold"
+            style={{ color: "var(--text-muted)", letterSpacing: "0.14em" }}
+          >
+            아직 잠긴 배지
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            {locked.map((b) => {
+              const { ratio, note } = lockedProgress(b.name, stats);
+              return (
+                <div
+                  key={b.name}
+                  className="flex flex-col gap-3.5 px-6 py-[22px] rounded-card"
+                  style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
+                >
+                  <BadgeIcon badge={b} locked />
+                  <div className="flex flex-col gap-1.5 flex-1">
+                    <p className="text-[15px] leading-[18px] font-semibold" style={{ color: "var(--text-faint)" }}>
+                      {b.name}
+                    </p>
+                    <p className="text-xs leading-4" style={{ color: "var(--text-muted)" }}>
+                      {note}
+                    </p>
+                  </div>
+                  <div className="h-[5px] w-full rounded-full shrink-0" style={{ background: "var(--score-track)" }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{ background: "rgba(61,219,135,0.4)", width: `${Math.round(ratio * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
-    </div>
+
+      {/* ── 자랑하기 모달 ── */}
+      <Modal open={!!shareTarget} onClose={() => setShareTarget(null)} title="배지 자랑하기">
+        {shareTarget && (
+          <div className="flex flex-col gap-5">
+            <div
+              className="flex items-center gap-3.5 px-4 py-3.5 rounded-lg"
+              style={{ background: "var(--accent-soft)", border: "1px solid rgba(61,219,135,0.2)" }}
+            >
+              {getBadgeDef(shareTarget.name) && <BadgeIcon badge={getBadgeDef(shareTarget.name)!} />}
+              <div className="flex flex-col gap-1 min-w-0">
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  커뮤니티에 공유할 배지
+                </p>
+                <p className="text-[15px] leading-[18px] font-semibold truncate" style={{ color: "var(--color-bloom)" }}>
+                  {shareTarget.name}
+                </p>
+              </div>
+            </div>
+
+            <Field label="한마디 (선택)" hint="커뮤니티 피드에 이름과 함께 공개됩니다.">
+              <textarea
+                value={shareMsg}
+                onChange={(e) => setShareMsg(e.target.value)}
+                maxLength={MAX_POST_LENGTH}
+                rows={3}
+                placeholder="예: 드디어 7일 연속 달성했어요!"
+                className="w-full px-3.5 py-3 rounded-lg text-sm outline-none resize-none transition-colors focus:border-[color:var(--color-bloom)]"
+                style={inputStyle}
+              />
+            </Field>
+
+            <ErrorNote>{shareError}</ErrorNote>
+
+            <Pill onClick={handleShare} disabled={sharing} variant="accent" className="w-full">
+              {sharing ? "공유 중…" : "커뮤니티에 공유"}
+            </Pill>
+          </div>
+        )}
+      </Modal>
+    </AppShell>
   );
 }

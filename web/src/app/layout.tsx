@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/context/AuthContext";
-import { ThemeProvider } from "@/context/ThemeContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,33 +16,17 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-// 페이지 로드 시 localStorage를 읽어 dark 클래스를 즉시 적용 (FOUC 방지)
-const themeScript = `
-(function(){
-  try {
-    var t = localStorage.getItem('theme');
-    if (t === 'dark' || t === null) document.documentElement.classList.add('dark');
-  } catch(e){}
-})();
-`;
-
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko" suppressHydrationWarning>
-      <head>
-        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-        {/* 폰트는 public/fonts에서 직접 서빙한다 (globals.css의 @font-face).
-            기존 jsDelivr stylesheet는 URL이 404라 폰트가 아예 적용되지 않고 있었다. */}
-      </head>
+    <html lang="ko">
+      {/* 폰트는 public/fonts에서 직접 서빙한다 (globals.css의 @font-face).
+          다크 단일 테마라 FOUC 방지용 인라인 테마 스크립트도 더 이상 필요 없다. */}
       <body>
-        <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
-        </ThemeProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );
