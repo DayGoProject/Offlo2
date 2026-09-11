@@ -1,36 +1,43 @@
 @import "tailwindcss";
 
-/* ── 스포카 한 산스 네오 (self-host) ────────────────────────────
-   Copyright (c) 2020 Spoqa, Inc. — MIT License
-   https://github.com/spoqa/spoqa-han-sans (v3.3.0 Subset)
+/* ── Pretendard (self-host, KS X 1001 서브셋) ──────────────────
+   Copyright (c) 2021 Kil Hyung-jin — SIL Open Font License 1.1
+   https://github.com/orioncactus/pretendard
 
-   코드가 실제로 쓰는 굵기는 400·500·700뿐이다.
-   font-semibold(600)는 700으로, font-extrabold(800)도 700으로 매칭되므로
-   Thin(100)·Light(300)은 받지 않는다 (880KB → 544KB).
+   원본은 굵기당 약 750KB다. 한국어 상용 글리프(4,216자) + 라틴으로 직접
+   서브셋해 굵기당 ~280KB로 줄였다. 굵기는 400·600 둘만 받는다 —
+   500은 400으로, 700 이상은 600으로 스냅된다.
+   (이전 스포카 한 산스 네오 3굵기 544KB → Pretendard 2굵기 559KB, 순증가 거의 없음)
    ──────────────────────────────────────────────────────────── */
 @font-face {
-  font-family: "Spoqa Han Sans Neo";
+  font-family: "Pretendard";
   font-weight: 400;
   font-style: normal;
   font-display: swap;
-  src: local("Spoqa Han Sans Neo Regular"),
-       url("/fonts/SpoqaHanSansNeo-Regular.woff2") format("woff2");
+  src: local("Pretendard Regular"),
+       url("/fonts/Pretendard-Regular.woff2") format("woff2");
 }
 @font-face {
-  font-family: "Spoqa Han Sans Neo";
-  font-weight: 500;
+  font-family: "Pretendard";
+  font-weight: 600;
   font-style: normal;
   font-display: swap;
-  src: local("Spoqa Han Sans Neo Medium"),
-       url("/fonts/SpoqaHanSansNeo-Medium.woff2") format("woff2");
+  src: local("Pretendard SemiBold"),
+       url("/fonts/Pretendard-SemiBold.woff2") format("woff2");
 }
+
+/* ── Familjen Grotesk (self-host, 라틴 전용 가변) ───────────────
+   SIL Open Font License 1.1 — 라틴 서브셋이라 19KB뿐이다.
+   숫자·영문 디스플레이(예: "1,460", "4h 12m", "OFFLO")에만 쓴다.
+   한글 글리프가 없으므로 절대 한글에 지정하지 말 것 — 폴백으로 떨어져
+   90px 헤드라인에서 행간이 무너진다. (.claude/rules/3d.md 참고)
+   ──────────────────────────────────────────────────────────── */
 @font-face {
-  font-family: "Spoqa Han Sans Neo";
-  font-weight: 700;
+  font-family: "Familjen Grotesk";
+  font-weight: 400 700;
   font-style: normal;
   font-display: swap;
-  src: local("Spoqa Han Sans Neo Bold"),
-       url("/fonts/SpoqaHanSansNeo-Bold.woff2") format("woff2");
+  src: url("/fonts/FamiljenGrotesk-var.woff2") format("woff2-variations");
 }
 
 /* .dark 클래스 기반 다크모드 활성화 */
@@ -39,7 +46,8 @@
 @theme {
   --color-base: #0A0A0F;
   --color-brand: #3DDB87;
-  --font-sans: "Spoqa Han Sans Neo", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-display: "Familjen Grotesk", "Pretendard", sans-serif;
 
   --animate-marquee: marquee 20s linear infinite;
   @keyframes marquee {
@@ -157,3 +165,81 @@ a {
    에러:             text-red-500 bg-red-500/10 border-red-500/20
    브랜드 색:        text-brand / bg-brand (라이트/다크 동일)
    ──────────────────────────────────────────────────────────── */
+
+/* ── 히어로 새싹 상시 움직임 ────────────────────────────────────
+   JS 프레임 루프(rAF)에 의존하지 않는다 — 컴포지터가 직접 돌린다.
+   Framer Motion은 같은 요소의 transform을 덮어쓰므로, 이 클래스는
+   Framer가 붙은 요소의 '자식'에만 건다 (HeroSprout 참고).
+   ──────────────────────────────────────────────────────────── */
+@keyframes offlo-sprout-float {
+  0%   { transform: translate3d(0, 0, 0) rotateY(-7deg) rotateX(2deg); }
+  25%  { transform: translate3d(0, -10px, 22px) rotateY(3deg) rotateX(-1deg); }
+  50%  { transform: translate3d(0, -4px, 6px) rotateY(8deg) rotateX(-2.5deg); }
+  75%  { transform: translate3d(0, 8px, 20px) rotateY(1deg) rotateX(1deg); }
+  100% { transform: translate3d(0, 0, 0) rotateY(-7deg) rotateX(2deg); }
+}
+@keyframes offlo-glow-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(0.96); }
+  50%      { opacity: 1;   transform: scale(1.06); }
+}
+
+.offlo-sprout-float {
+  animation: offlo-sprout-float 14s ease-in-out infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.offlo-glow-pulse {
+  animation: offlo-glow-pulse 7s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offlo-sprout-float,
+  .offlo-glow-pulse {
+    animation: none;
+  }
+}
+
+/* ── 패럴랙스 오브젝트 부유 ─────────────────────────────────────
+   주기를 서로 다르게(17·23·29초, 서로소에 가깝게) 잡아야 오브젝트들이
+   같은 박자로 움직이지 않는다. 같은 주기면 '패턴'으로 읽혀 깊이가 깨진다.
+   ──────────────────────────────────────────────────────────── */
+@keyframes offlo-float-a {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--spin, 0deg)); }
+  33%      { transform: translate3d(14px, -22px, 0) rotate(calc(var(--spin, 0deg) + 6deg)); }
+  66%      { transform: translate3d(-10px, -8px, 0) rotate(calc(var(--spin, 0deg) - 4deg)); }
+}
+@keyframes offlo-float-b {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--spin, 0deg)); }
+  40%      { transform: translate3d(-18px, 16px, 0) rotate(calc(var(--spin, 0deg) - 8deg)); }
+  70%      { transform: translate3d(8px, 24px, 0) rotate(calc(var(--spin, 0deg) + 3deg)); }
+}
+@keyframes offlo-float-c {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(var(--spin, 0deg)); }
+  50%      { transform: translate3d(20px, 14px, 0) rotate(calc(var(--spin, 0deg) + 10deg)); }
+}
+
+.offlo-float-a { animation: offlo-float-a 17s ease-in-out infinite; will-change: transform; }
+.offlo-float-b { animation: offlo-float-b 23s ease-in-out infinite; will-change: transform; }
+.offlo-float-c { animation: offlo-float-c 29s ease-in-out infinite; will-change: transform; }
+
+@media (prefers-reduced-motion: reduce) {
+  .offlo-float-a, .offlo-float-b, .offlo-float-c { animation: none; }
+}
+
+/* ── 모바일 섹션 스냅 ───────────────────────────────────────────
+   터치는 JS로 가로채지 않는다 — 관성이 OS와 어긋나면 오히려 이질감이 커진다.
+   네이티브 scroll-snap에 맡기되 `proximity`를 쓴다. `mandatory`는 화면보다
+   긴 섹션에서 사용자를 가둘 수 있다.
+   ──────────────────────────────────────────────────────────── */
+@media (pointer: coarse) {
+  html {
+    scroll-snap-type: y proximity;
+  }
+  [data-snap] {
+    scroll-snap-align: start;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-snap-type: none; }
+}
