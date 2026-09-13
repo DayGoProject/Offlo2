@@ -2,43 +2,36 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getBadgeEmoji } from "@/lib/badge-utils";
 import { relTime } from "@/lib/format";
 import {
-  fetchComments, createComment, deleteComment, deletePost, toggleLike,
-  MAX_COMMENT_LENGTH, type FeedComment, type FeedPost,
+  fetchComments,
+  createComment,
+  deleteComment,
+  deletePost,
+  toggleLike,
+  MAX_COMMENT_LENGTH,
+  type FeedComment,
+  type FeedPost,
 } from "@/services/community";
 
 /* ── 유틸 ──────────────────────────────────────────────────── */
 
-function Avatar({ name }: { name: string }) {
+function Avatar({ name, size = 32 }: { name: string; size?: number }) {
   return (
-    <div
-      className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
-      style={{ background: "rgba(61,219,135,0.12)", color: "#3DDB87" }}
+    <span
+      className="num flex items-center justify-center rounded-full shrink-0"
+      style={{
+        width: size,
+        height: size,
+        background: "var(--score-track)",
+        color: "var(--text-muted)",
+        fontSize: size >= 32 ? 12 : 11,
+        fontWeight: 600,
+        letterSpacing: 0,
+      }}
     >
-      {name.trim().charAt(0) || "?"}
-    </div>
-  );
-}
-
-/* ── 아이콘 ────────────────────────────────────────────────── */
-
-function HeartIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"}
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-    </svg>
-  );
-}
-
-function CommentIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-    </svg>
+      {name.trim().charAt(0).toUpperCase() || "?"}
+    </span>
   );
 }
 
@@ -60,6 +53,9 @@ export default function PostCard({
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // window.confirm 대신 두 단계 확인 — 브라우저 모달은 다크 팔레트를 따르지 않고
+  // 자동화·모바일에서 흐름을 끊는다
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function handleLike() {
     // 낙관적 업데이트 후 서버 응답으로 실제 값을 덮어쓴다
@@ -114,95 +110,129 @@ export default function PostCard({
   }
 
   async function handleDeletePost() {
-    if (!confirm("이 글을 삭제할까요? 댓글도 함께 사라집니다.")) return;
     try {
       await deletePost(post.id);
       onDelete();
     } catch (e) {
+      setConfirmDelete(false);
       setError(e instanceof Error ? e.message : "글을 삭제하지 못했습니다.");
     }
   }
 
   return (
     <article
-      className="rounded-2xl p-5"
+      className="flex flex-col gap-3.5 w-full px-6 py-[22px] rounded-card"
       style={{
         background: "var(--bg-card)",
         border: `1px solid ${highlight ? "rgba(61,219,135,0.45)" : "var(--border-card)"}`,
       }}
     >
       {/* 헤더 */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-[11px]">
         <Avatar name={post.authorName} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold truncate" style={{ color: "var(--text-primary)" }}>
+        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+          <p className="text-[13px] leading-4 font-semibold truncate" style={{ color: "var(--text-primary)" }}>
             {post.authorName}
           </p>
-          <p className="text-xs" style={{ color: "var(--text-faint)" }}>
+          <p className="text-[11px] leading-[14px]" style={{ color: "var(--text-muted)" }}>
             {relTime(post.createdAt)}
           </p>
         </div>
-        {post.isMine && (
-          <button
-            onClick={handleDeletePost}
-            className="text-xs px-2.5 py-1 rounded-full transition-opacity hover:opacity-100"
-            style={{ color: "var(--text-faint)", opacity: 0.7 }}
-          >
-            삭제
-          </button>
-        )}
-      </div>
 
-      {/* 배지 자랑 */}
-      {post.type === "badge" && post.badgeName && (
-        <div
-          className="mt-4 flex items-center gap-3 rounded-xl px-4 py-3"
-          style={{ background: "rgba(61,219,135,0.08)", border: "1px solid rgba(61,219,135,0.2)" }}
-        >
-          <span className="text-2xl">{getBadgeEmoji(post.badgeName)}</span>
-          <div>
-            <p className="text-xs" style={{ color: "var(--text-muted)" }}>배지 획득</p>
-            <p className="text-sm font-bold" style={{ color: "#3DDB87" }}>{post.badgeName}</p>
-          </div>
-        </div>
-      )}
+        {/* 배지 자랑 글이면 배지 이름을 헤더 오른쪽 알약으로 */}
+        {post.type === "badge" && post.badgeName && (
+          <span
+            className="flex items-center h-6 px-[11px] rounded-full text-[11px] leading-[14px] font-semibold shrink-0"
+            style={{
+              background: "var(--accent-soft)",
+              border: "1px solid rgba(61,219,135,0.2)",
+              color: "var(--color-bloom)",
+            }}
+          >
+            {post.badgeName}
+          </span>
+        )}
+
+        {post.isMine &&
+          (confirmDelete ? (
+            <span className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleDeletePost}
+                className="text-[11px] transition-opacity hover:opacity-80 cursor-pointer"
+                style={{ color: "var(--danger)" }}
+              >
+                삭제할까요?
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="text-[11px] transition-opacity hover:opacity-80 cursor-pointer"
+                style={{ color: "var(--text-muted)" }}
+              >
+                취소
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-[11px] shrink-0 transition-opacity hover:opacity-80 cursor-pointer"
+              style={{ color: "var(--text-faint)" }}
+            >
+              삭제
+            </button>
+          ))}
+      </div>
 
       {/* 본문 */}
       {post.content && (
-        <p
-          className="mt-3.5 text-sm leading-relaxed whitespace-pre-wrap break-words"
-          style={{ color: "var(--text-primary-soft)" }}
-        >
+        <p className="text-sm leading-[23px] whitespace-pre-wrap break-words" style={{ color: "var(--text-primary-soft)" }}>
           {post.content}
         </p>
       )}
 
       {/* 액션 */}
-      <div className="mt-4 flex items-center gap-2">
+      <div className="flex items-center gap-[18px] pt-3" style={{ borderTop: "1px solid var(--border-card)" }}>
         <button
           onClick={handleLike}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-          style={{
-            color: post.liked ? "#3DDB87" : "var(--text-muted)",
-            background: post.liked ? "rgba(61,219,135,0.10)" : "var(--bg-subtle)",
-            border: `1px solid ${post.liked ? "rgba(61,219,135,0.25)" : "var(--border-card)"}`,
-          }}
+          aria-pressed={post.liked}
+          className="flex items-center gap-[7px] transition-opacity hover:opacity-75 cursor-pointer"
         >
-          <HeartIcon filled={post.liked} />
-          {post.likeCount}
+          <svg width="15" height="15" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+            <path
+              d="M8 13.6 3.2 9a2.9 2.9 0 0 1 4.1-4.1L8 5.6l.7-.7A2.9 2.9 0 0 1 12.8 9L8 13.6z"
+              fill={post.liked ? "var(--color-bloom)" : "none"}
+              stroke={post.liked ? "none" : "var(--text-muted)"}
+              strokeWidth="1.3"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span
+            className="num text-xs leading-4"
+            style={{ color: post.liked ? "var(--color-bloom)" : "var(--text-muted)", letterSpacing: 0 }}
+          >
+            {post.likeCount}
+          </span>
         </button>
 
         <button
           onClick={handleToggleComments}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-          style={{
-            color: open ? "var(--text-primary)" : "var(--text-muted)",
-            background: "var(--bg-subtle)",
-            border: "1px solid var(--border-card)",
-          }}
+          aria-expanded={open}
+          className="flex items-center gap-[7px] transition-opacity hover:opacity-75 cursor-pointer"
         >
-          <CommentIcon />
-          {post.commentCount}
+          <svg width="15" height="15" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+            <path
+              d="M2.4 7.4c0-2.6 2.5-4.6 5.6-4.6s5.6 2 5.6 4.6-2.5 4.6-5.6 4.6c-.7 0-1.4-.1-2-.3l-2.8 1.1.7-2.3a4.3 4.3 0 0 1-1.5-3.1z"
+              fill="none"
+              stroke={open ? "var(--text-primary)" : "var(--text-muted)"}
+              strokeWidth="1.3"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span
+            className="num text-xs leading-4"
+            style={{ color: open ? "var(--text-primary)" : "var(--text-muted)", letterSpacing: 0 }}
+          >
+            {post.commentCount}
+          </span>
         </button>
       </div>
 
@@ -216,9 +246,11 @@ export default function PostCard({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="mt-4 pt-4 space-y-3" style={{ borderTop: "1px solid var(--border-strip)" }}>
+            <div className="flex flex-col gap-3.5 pt-3.5" style={{ borderTop: "1px solid var(--border-card)" }}>
               {comments === null ? (
-                <p className="text-xs" style={{ color: "var(--text-faint)" }}>댓글 불러오는 중…</p>
+                <p className="text-xs" style={{ color: "var(--text-faint)" }}>
+                  댓글 불러오는 중…
+                </p>
               ) : comments.length === 0 ? (
                 <p className="text-xs" style={{ color: "var(--text-faint)" }}>
                   아직 댓글이 없어요. 첫 응원을 남겨보세요.
@@ -226,19 +258,19 @@ export default function PostCard({
               ) : (
                 comments.map((c) => (
                   <div key={c.id} className="flex items-start gap-2.5">
-                    <Avatar name={c.authorName} />
-                    <div className="flex-1 min-w-0">
+                    <Avatar name={c.authorName} size={26} />
+                    <div className="flex flex-col gap-1 flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold" style={{ color: "var(--text-primary)" }}>
+                        <span className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
                           {c.authorName}
                         </span>
-                        <span className="text-xs" style={{ color: "var(--text-ghost)" }}>
+                        <span className="text-[11px]" style={{ color: "var(--text-ghost)" }}>
                           {relTime(c.createdAt)}
                         </span>
                         {c.isMine && (
                           <button
                             onClick={() => handleDeleteComment(c.id)}
-                            className="text-xs ml-auto"
+                            className="text-[11px] ml-auto shrink-0 transition-opacity hover:opacity-80 cursor-pointer"
                             style={{ color: "var(--text-ghost)" }}
                           >
                             삭제
@@ -246,8 +278,8 @@ export default function PostCard({
                         )}
                       </div>
                       <p
-                        className="text-xs mt-0.5 leading-relaxed whitespace-pre-wrap break-words"
-                        style={{ color: "var(--text-secondary)" }}
+                        className="text-xs leading-[19px] whitespace-pre-wrap break-words"
+                        style={{ color: "var(--text-muted)" }}
                       >
                         {c.content}
                       </p>
@@ -257,7 +289,10 @@ export default function PostCard({
               )}
 
               {/* 댓글 입력 */}
-              <div className="flex items-center gap-2 pt-1">
+              <div
+                className="flex items-center gap-2.5 w-full py-1.5 pl-4 pr-1.5 rounded-full"
+                style={{ background: "var(--bg-nav)", border: "1px solid var(--border-card)" }}
+              >
                 <input
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
@@ -266,24 +301,24 @@ export default function PostCard({
                   }}
                   maxLength={MAX_COMMENT_LENGTH}
                   placeholder="따뜻한 댓글을 남겨주세요"
-                  className="flex-1 px-3.5 py-2.5 rounded-xl text-xs outline-none"
-                  style={{
-                    background: "var(--bg-subtle)",
-                    border: "1px solid var(--border-card)",
-                    color: "var(--text-primary)",
-                  }}
+                  className="flex-1 min-w-0 bg-transparent py-1.5 text-xs outline-none"
+                  style={{ color: "var(--text-primary)" }}
                 />
                 <button
                   onClick={handleAddComment}
                   disabled={busy || draft.trim().length === 0}
-                  className="px-3.5 py-2.5 rounded-xl text-xs font-bold transition-opacity hover:opacity-85 disabled:opacity-40"
-                  style={{ background: "#3DDB87", color: "#0A0A0F" }}
+                  className="flex items-center h-7 px-3.5 rounded-full text-xs font-semibold shrink-0 transition-opacity hover:opacity-85 disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
+                  style={{ background: "var(--color-bloom)", color: "var(--bg-page)" }}
                 >
                   등록
                 </button>
               </div>
 
-              {error && <p className="text-xs" style={{ color: "#f87171" }}>{error}</p>}
+              {error && (
+                <p className="text-xs" style={{ color: "var(--danger)" }}>
+                  {error}
+                </p>
+              )}
             </div>
           </motion.div>
         )}

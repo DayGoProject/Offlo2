@@ -109,18 +109,19 @@ export default function NotificationCenter() {
       {/* 종 아이콘 */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:bg-white/[0.06]"
-        style={{ color: "var(--text-secondary)" }}
+        className="relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-chalk/[0.06]"
+        style={{ color: "var(--text-muted)" }}
         aria-label="알림"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        {/* Paper 디자인의 종 — 16 뷰박스 / stroke 1.2 */}
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 1.6a4.2 4.2 0 0 0-4.2 4.2v3L2.6 11.4h10.8L12.2 8.8v-3A4.2 4.2 0 0 0 8 1.6z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+          <path d="M6.6 13.2a1.5 1.5 0 0 0 2.8 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
         </svg>
         {unread > 0 && (
           <span
-            className="absolute top-1 right-1 min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold"
-            style={{ background: "#3DDB87", color: "#0A0A0F" }}
+            className="num absolute top-1 right-1 min-w-[15px] h-[15px] px-1 flex items-center justify-center rounded-full text-[10px]"
+            style={{ background: "var(--color-bloom)", color: "#040508", fontWeight: 600, letterSpacing: 0 }}
           >
             {unread > 9 ? "9+" : unread}
           </span>
@@ -131,7 +132,7 @@ export default function NotificationCenter() {
           화면 밖으로 나가지 않는다. 폭도 뷰포트를 넘지 않게 clamp 한다(360px 대응). */}
       {open && (
         <div
-          className="absolute right-0 lg:right-auto lg:left-0 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-2xl overflow-hidden z-50"
+          className="absolute right-0 lg:right-auto lg:left-0 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-card overflow-hidden z-50"
           style={{
             background: "var(--bg-card)",
             border: "1px solid var(--border-card)",
@@ -149,7 +150,7 @@ export default function NotificationCenter() {
               <button
                 onClick={markAllRead}
                 className="text-xs font-medium transition-opacity hover:opacity-70"
-                style={{ color: "#3DDB87" }}
+                style={{ color: "var(--color-bloom)" }}
               >
                 모두 읽음
               </button>
@@ -166,7 +167,7 @@ export default function NotificationCenter() {
                 <button
                   key={n.id}
                   onClick={() => handleItemClick(n)}
-                  className="w-full flex gap-3 px-4 py-3 text-left transition-all hover:bg-white/[0.04]"
+                  className="w-full flex gap-3 px-4 py-3 text-left transition-all hover:bg-chalk/[0.04]"
                   style={{
                     borderBottom: "1px solid var(--border-card)",
                     background: n.read ? undefined : "rgba(61,219,135,0.06)",
@@ -178,7 +179,7 @@ export default function NotificationCenter() {
                       <span className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
                         {n.title}
                       </span>
-                      {!n.read && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#3DDB87" }} />}
+                      {!n.read && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--color-bloom)" }} />}
                     </span>
                     <span className="block text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
                       {n.body}

@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import AppSidebar from "@/components/AppSidebar";
-import { fmt, fmtDateShort } from "@/lib/format";
+import AppShell from "@/components/app/AppShell";
+import PageHeader, { Pill } from "@/components/app/PageHeader";
+import Modal from "@/components/app/Modal";
+import Field, { ErrorNote, inputClass, inputStyle } from "@/components/app/Field";
+import { fmt, fmtDate } from "@/lib/format";
 
 /* ── 타입 ──────────────────────────────────────────────────────── */
 
@@ -18,34 +21,26 @@ interface Goal {
   createdAt: string;
 }
 
-type Tab = "active" | "completed" | "all";
+const PRESETS = [30, 60, 90, 120, 180];
 
 /* ── 유틸 ──────────────────────────────────────────────────────── */
 
-function dday(endDateStr: string, status: string): string {
-  if (status === "completed") return "완료";
-  const end = new Date(endDateStr);
-  end.setHours(0, 0, 0, 0);
-  const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  const diff = Math.ceil((end.getTime() - now.getTime()) / 86400000);
-  if (diff < 0) return "기간 초과";
-  if (diff === 0) return "오늘 마감";
-  return `D-${diff}`;
+/** 기간 대비 경과일. 달성률이 아니라 '진행률'이다 — 실제 달성 여부는
+ *  일간 분석이 쌓여야 알 수 있고, 목표 완료는 사용자가 직접 처리한다. */
+function progress(g: Goal): { done: number; total: number; left: number; pct: number } {
+  const day = 86400000;
+  const start = new Date(g.startDate).setHours(0, 0, 0, 0);
+  const end = new Date(g.endDate).setHours(0, 0, 0, 0);
+  const today = new Date().setHours(0, 0, 0, 0);
+
+  const total = Math.max(1, Math.round((end - start) / day) + 1);
+  const done = Math.max(0, Math.min(total, Math.round((today - start) / day) + 1));
+  return { done, total, left: total - done, pct: Math.round((done / total) * 100) };
 }
 
-const STATUS_LABEL: Record<string, string> = { active: "진행 중", completed: "완료", paused: "일시정지" };
-const STATUS_COLOR: Record<string, string> = {
-  active: "#3DDB87",
-  completed: "rgba(255,255,255,0.4)",
-  paused: "rgba(255,200,0,0.7)",
-};
+/* ── 진행 중 목표 행 ───────────────────────────────────────────── */
 
-const PRESETS = [30, 60, 90, 120, 180];
-
-/* ── 목표 카드 ─────────────────────────────────────────────────── */
-
-function GoalCard({
+function ActiveGoal({
   goal,
   onComplete,
   onDelete,
@@ -54,76 +49,72 @@ function GoalCard({
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
-  const color = STATUS_COLOR[goal.status];
-  const ddayText = dday(goal.endDate, goal.status);
-  const ddayExpired = ddayText === "기간 초과";
+  const { done, total, left, pct } = progress(goal);
+  const expired = left <= 0;
 
   return (
     <div
-      className="rounded-2xl p-5 flex flex-col gap-3"
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
+      className="flex flex-col lg:flex-row lg:items-center gap-5 lg:gap-[26px] w-full px-[22px] sm:px-7 py-6 rounded-card"
+      style={{
+        background: "var(--bg-card)",
+        // 마감이 지난 목표는 강조하지 않는다 — 재촉이 아니라 정리의 대상이다
+        border: `1px solid ${expired ? "var(--border-card)" : "rgba(61,219,135,0.18)"}`,
+      }}
     >
-      {/* 제목 + 상태 배지 */}
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-bold leading-snug flex-1" style={{ color: "var(--text-primary)" }}>
+      <div className="flex flex-col gap-2 shrink-0 lg:w-[290px] min-w-0">
+        <h3
+          className="text-[17px] leading-[22px] font-semibold tracking-[-0.015em]"
+          style={{ color: "var(--text-primary)" }}
+        >
           {goal.title}
         </h3>
-        <span
-          className="flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-semibold"
-          style={{
-            background: `${color}18`,
-            color,
-            border: `1px solid ${color}30`,
-          }}
-        >
-          {STATUS_LABEL[goal.status]}
-        </span>
+        <p className="text-xs leading-4" style={{ color: "var(--text-muted)" }}>
+          <span className="num" style={{ letterSpacing: 0 }}>
+            {fmtDate(goal.startDate)}
+          </span>
+          {" — "}
+          <span className="num" style={{ letterSpacing: 0 }}>
+            {fmtDate(goal.endDate)}
+          </span>
+          {" · 하루 "}
+          {fmt(goal.targetMinutes)} 이하
+        </p>
       </div>
 
-      {/* 메타 정보 */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span
-          className="text-xs px-2.5 py-1 rounded-lg"
-          style={{ background: "rgba(61,219,135,0.08)", color: "#3DDB87" }}
+      <div className="flex flex-col gap-2.5 flex-1 min-w-0">
+        <div className="flex items-baseline justify-between gap-3 w-full">
+          <span className="text-xs leading-4" style={{ color: "var(--text-muted)" }}>
+            진행률
+          </span>
+          <span className="num text-[22px] leading-7" style={{ color: "var(--text-primary)", letterSpacing: "-0.03em" }}>
+            {pct}%
+          </span>
+        </div>
+        <div className="h-1.5 w-full rounded-full shrink-0" style={{ background: "var(--score-track)" }}>
+          <div className="h-full rounded-full" style={{ background: "var(--color-bloom)", width: `${pct}%` }} />
+        </div>
+        <p
+          className="text-xs leading-4"
+          style={{ color: expired ? "var(--text-muted)" : "var(--color-bloom)" }}
         >
-          {fmt(goal.targetMinutes)} 이하/일
-        </span>
-        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-          {fmtDateShort(goal.startDate)} ~ {fmtDateShort(goal.endDate)}
-        </span>
-        <span
-          className="text-xs font-semibold ml-auto"
-          style={{ color: ddayExpired ? "rgba(255,100,100,0.6)" : goal.status === "completed" ? "var(--text-muted)" : "#3DDB87" }}
-        >
-          {ddayText}
-        </span>
+          {total}일 중 {done}일 지남 · {expired ? "기간이 끝났어요" : `${left}일 남음`}
+        </p>
       </div>
 
-      {/* 액션 버튼 */}
-      <div className="flex gap-2 pt-1">
-        {goal.status === "active" && (
-          <button
-            onClick={() => onComplete(goal.id)}
-            className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-80"
-            style={{
-              background: "rgba(61,219,135,0.1)",
-              color: "#3DDB87",
-              border: "1px solid rgba(61,219,135,0.2)",
-            }}
-          >
-            완료 처리
-          </button>
-        )}
+      <div className="flex gap-2 shrink-0">
         <button
           onClick={() => onDelete(goal.id)}
-          className={`${goal.status === "active" ? "" : "flex-1"} py-2 px-4 rounded-xl text-xs font-semibold transition-all hover:opacity-80`}
-          style={{
-            background: "rgba(248,113,113,0.08)",
-            color: "rgba(248,113,113,0.7)",
-            border: "1px solid rgba(248,113,113,0.15)",
-          }}
+          className="flex items-center h-[34px] px-4 rounded-full text-xs font-medium transition-opacity hover:opacity-70 cursor-pointer"
+          style={{ border: "1px solid var(--border-strong)", color: "var(--text-muted)" }}
         >
           삭제
+        </button>
+        <button
+          onClick={() => onComplete(goal.id)}
+          className="flex items-center h-[34px] px-4 rounded-full text-xs font-semibold transition-opacity hover:opacity-90 cursor-pointer"
+          style={{ background: "var(--color-bloom)", color: "var(--bg-page)" }}
+        >
+          완료 처리
         </button>
       </div>
     </div>
@@ -138,7 +129,7 @@ export default function GoalsPage() {
 
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("active");
+  const [showDone, setShowDone] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ title: "", targetMinutes: 60, startDate: "", endDate: "" });
@@ -173,7 +164,7 @@ export default function GoalsPage() {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ status: "completed" }),
     });
-    if (res.ok) setGoals((prev) => prev.map((g) => g.id === id ? { ...g, status: "completed" } : g));
+    if (res.ok) setGoals((prev) => prev.map((g) => (g.id === id ? { ...g, status: "completed" } : g)));
   }
 
   async function handleDelete(id: string) {
@@ -198,267 +189,238 @@ export default function GoalsPage() {
     if (!user) return;
     setFormError("");
 
-    if (!form.title.trim()) { setFormError("제목을 입력해주세요."); return; }
-    if (!form.startDate || !form.endDate) { setFormError("기간을 설정해주세요."); return; }
-    if (new Date(form.endDate) <= new Date(form.startDate)) {
-      setFormError("종료일은 시작일 이후여야 합니다.");
-      return;
-    }
+    if (!form.title.trim()) return setFormError("제목을 입력해주세요.");
+    if (!form.startDate || !form.endDate) return setFormError("기간을 설정해주세요.");
+    if (new Date(form.endDate) <= new Date(form.startDate))
+      return setFormError("종료일은 시작일 이후여야 합니다.");
 
     setSubmitting(true);
-    const token = await user.getIdToken();
-    const res = await fetch("/api/goals", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-
-    if (res.ok) {
-      const { goal } = await res.json();
-      setGoals((prev) => [goal, ...prev]);
-      setShowModal(false);
-      setTab("active");
-    } else {
-      const data = await res.json().catch(() => ({}));
-      setFormError(data.error ?? "목표 생성에 실패했습니다.");
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/goals", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        const { goal } = await res.json();
+        setGoals((prev) => [goal, ...prev]);
+        setShowModal(false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setFormError(data.error ?? "목표 생성에 실패했습니다.");
+      }
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   }
 
   if (authLoading || !user) return null;
 
-  const filtered = goals.filter((g) => tab === "all" || g.status === tab);
-
-  const TABS: { key: Tab; label: string; count: number }[] = [
-    { key: "active",    label: "진행 중",  count: goals.filter((g) => g.status === "active").length },
-    { key: "completed", label: "완료",     count: goals.filter((g) => g.status === "completed").length },
-    { key: "all",       label: "전체",     count: goals.length },
-  ];
+  const active = goals.filter((g) => g.status !== "completed");
+  const done = goals.filter((g) => g.status === "completed");
 
   return (
-    <div className="flex min-h-screen" style={{ background: "var(--bg-page)" }}>
-      <AppSidebar />
+    <AppShell>
+      <PageHeader
+        eyebrow={loading ? "불러오는 중" : `진행 중 ${active.length}개 · 완료 ${done.length}개`}
+        title="목표 관리"
+        actions={
+          <>
+            {done.length > 0 && (
+              <Pill onClick={() => setShowDone((v) => !v)}>
+                {showDone ? "완료 숨기기" : "완료한 목표"}
+              </Pill>
+            )}
+            <Pill onClick={openModal} variant="primary">
+              새 목표 추가
+            </Pill>
+          </>
+        }
+      />
 
-      <div className="lg:ml-56 pt-14 lg:pt-0 flex-1 flex flex-col min-h-screen overflow-x-hidden">
-
-        {/* 헤더 */}
-        <div
-          className="flex items-center justify-between gap-3 px-4 sm:px-8 py-4 sm:py-6 border-b"
-          style={{ borderColor: "var(--border-card)" }}
+      {/* ── 진행 중 ── */}
+      <section className="flex flex-col gap-3.5 w-full">
+        <h2
+          className="text-[11px] leading-[14px] font-semibold"
+          style={{ color: "var(--text-muted)", letterSpacing: "0.14em" }}
         >
-          <div>
-            <h1 className="text-xl font-extrabold" style={{ color: "var(--text-primary)" }}>목표 관리</h1>
-            <p className="text-sm mt-0.5" style={{ color: "var(--text-muted)" }}>
-              스크린타임 감소 목표를 설정하고 관리하세요
-            </p>
-          </div>
-          <button
-            onClick={openModal}
-            className="flex items-center gap-2 shrink-0 whitespace-nowrap px-4 sm:px-5 py-2.5 rounded-full text-sm font-bold transition-opacity hover:opacity-85"
-            style={{ background: "#3DDB87", color: "#0A0A0F" }}
-          >
-            <span className="text-base leading-none">+</span> 새 목표 추가
-          </button>
-        </div>
+          진행 중
+        </h2>
 
-        {/* 탭 */}
-        <div className="flex items-center gap-2 px-4 sm:px-8 pt-4 sm:pt-6 overflow-x-auto">
-          {TABS.map(({ key, label, count }) => (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className="px-4 py-1.5 rounded-full text-sm font-medium transition-all shrink-0 whitespace-nowrap"
-              style={{
-                background: tab === key ? "#3DDB87" : "transparent",
-                color: tab === key ? "#0A0A0F" : "var(--text-muted)",
-                border: tab === key ? "none" : "1px solid var(--border-card)",
-              }}
-            >
-              {label} {count}
-            </button>
-          ))}
-        </div>
-
-        {/* 목록 */}
-        <div className="px-4 sm:px-8 py-4 sm:py-6 flex-1">
-          {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div
-                className="w-8 h-8 rounded-full border-2 animate-spin"
-                style={{ borderColor: "rgba(61,219,135,0.2)", borderTopColor: "#3DDB87" }}
-              />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 gap-3">
-              <span className="text-5xl">🎯</span>
-              <p className="text-base font-semibold" style={{ color: "var(--text-secondary)" }}>
-                {tab === "active" ? "진행 중인 목표가 없어요" : tab === "completed" ? "완료된 목표가 없어요" : "등록된 목표가 없어요"}
-              </p>
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                새 목표를 추가해서 디지털 디톡스를 시작해보세요
-              </p>
-              {tab !== "completed" && (
-                <button
-                  onClick={openModal}
-                  className="mt-2 px-5 py-2 rounded-full text-sm font-bold transition-opacity hover:opacity-85"
-                  style={{ background: "#3DDB87", color: "#0A0A0F" }}
-                >
-                  목표 추가하기
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))" }}>
-              {filtered.map((g) => (
-                <GoalCard key={g.id} goal={g} onComplete={handleComplete} onDelete={handleDelete} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 생성 모달 */}
-      {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.6)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
-        >
+        {loading ? (
+          <div className="h-[118px] w-full rounded-card animate-pulse" style={{ background: "var(--bg-bar)" }} />
+        ) : active.length === 0 ? (
           <div
-            className="w-full max-w-md mx-4 rounded-2xl p-6"
+            className="flex flex-col items-start gap-4 w-full px-[22px] sm:px-7 py-8 rounded-card"
             style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-base font-extrabold" style={{ color: "var(--text-primary)" }}>새 목표 추가</h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-sm transition-colors hover:bg-white/[0.06]"
-                style={{ color: "var(--text-muted)" }}
-              >
-                ✕
-              </button>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[15px]" style={{ color: "var(--text-primary)" }}>
+                진행 중인 목표가 없어요
+              </p>
+              <p className="text-[13px] leading-5" style={{ color: "var(--text-muted)" }}>
+                하루 사용 시간 상한을 하나만 정해도 달라집니다. 기간은 일주일이면 충분해요.
+              </p>
             </div>
-
-            <div className="space-y-5">
-              {/* 제목 */}
-              <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                  목표 제목
-                </label>
-                <input
-                  type="text"
-                  placeholder="예: 하루 스크린타임 2시간 이하로 줄이기"
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  maxLength={200}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-                  style={{
-                    background: "var(--bg-subtle)",
-                    border: "1px solid var(--border-card)",
-                    color: "var(--text-primary)",
-                  }}
-                />
-              </div>
-
-              {/* 하루 목표 스크린타임 */}
-              <div>
-                <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                  하루 목표 스크린타임
-                </label>
-                <div className="flex gap-2 flex-wrap mb-2.5">
-                  {PRESETS.map((min) => (
-                    <button
-                      key={min}
-                      onClick={() => setForm((f) => ({ ...f, targetMinutes: min }))}
-                      className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
-                      style={{
-                        background: form.targetMinutes === min ? "#3DDB87" : "var(--bg-subtle)",
-                        color: form.targetMinutes === min ? "#0A0A0F" : "var(--text-secondary)",
-                        border: `1px solid ${form.targetMinutes === min ? "#3DDB87" : "var(--border-card)"}`,
-                      }}
-                    >
-                      {fmt(min)}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={form.targetMinutes}
-                    onChange={(e) =>
-                      setForm((f) => ({
-                        ...f,
-                        targetMinutes: Math.max(1, Math.min(10080, parseInt(e.target.value) || 1)),
-                      }))
-                    }
-                    min={1}
-                    max={10080}
-                    className="w-24 px-3 py-2 rounded-xl text-sm outline-none text-center"
-                    style={{
-                      background: "var(--bg-subtle)",
-                      border: "1px solid var(--border-card)",
-                      color: "var(--text-primary)",
-                    }}
-                  />
-                  <span className="text-sm" style={{ color: "var(--text-muted)" }}>분 이하</span>
-                  <span className="text-xs" style={{ color: "var(--text-faint)" }}>
-                    ({fmt(form.targetMinutes)})
-                  </span>
-                </div>
-              </div>
-
-              {/* 기간 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                    시작일
-                  </label>
-                  <input
-                    type="date"
-                    value={form.startDate}
-                    onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                    style={{
-                      background: "var(--bg-subtle)",
-                      border: "1px solid var(--border-card)",
-                      color: "var(--text-primary)",
-                    }}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1.5" style={{ color: "var(--text-secondary)" }}>
-                    종료일
-                  </label>
-                  <input
-                    type="date"
-                    value={form.endDate}
-                    onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-                    style={{
-                      background: "var(--bg-subtle)",
-                      border: "1px solid var(--border-card)",
-                      color: "var(--text-primary)",
-                    }}
-                  />
-                </div>
-              </div>
-
-              {formError && (
-                <p className="text-xs" style={{ color: "#f87171" }}>{formError}</p>
-              )}
-
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className="w-full py-3 rounded-xl text-sm font-bold transition-opacity hover:opacity-85 disabled:opacity-50"
-                style={{ background: "#3DDB87", color: "#0A0A0F" }}
-              >
-                {submitting ? "추가 중..." : "목표 추가"}
-              </button>
-            </div>
+            <Pill onClick={openModal} variant="accent">
+              목표 추가하기
+            </Pill>
           </div>
-        </div>
+        ) : (
+          active.map((g) => (
+            <ActiveGoal key={g.id} goal={g} onComplete={handleComplete} onDelete={handleDelete} />
+          ))
+        )}
+      </section>
+
+      {/* ── 완료한 목표 ── */}
+      {showDone && done.length > 0 && (
+        <section className="flex flex-col gap-3.5 w-full">
+          <h2
+            className="text-[11px] leading-[14px] font-semibold"
+            style={{ color: "var(--text-muted)", letterSpacing: "0.14em" }}
+          >
+            완료한 목표
+          </h2>
+
+          <div
+            className="flex flex-col w-full rounded-card overflow-hidden"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border-card)" }}
+          >
+            {done.map((g, i) => (
+              <div
+                key={g.id}
+                className="flex items-center gap-3 sm:gap-4 w-full px-[22px] sm:px-[26px] py-4"
+                style={{ borderBottom: i === done.length - 1 ? undefined : "1px solid var(--border-card)" }}
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+                  <circle cx="8" cy="8" r="7" fill="var(--accent-soft)" />
+                  <path
+                    d="M4.8 8.2 6.9 10.3 11.2 6"
+                    fill="none"
+                    stroke="var(--color-bloom)"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="text-sm leading-[18px] flex-1 min-w-0 truncate" style={{ color: "var(--text-primary)" }}>
+                  {g.title}
+                </span>
+                <span
+                  className="num text-xs leading-4 shrink-0 hidden sm:inline"
+                  style={{ color: "var(--text-muted)", letterSpacing: 0, width: 96 }}
+                >
+                  {fmtDate(g.endDate)}
+                </span>
+                <span
+                  className="text-xs leading-4 font-medium shrink-0 text-right"
+                  style={{ color: "var(--color-bloom)", width: 60 }}
+                >
+                  +20분
+                </span>
+                <button
+                  onClick={() => handleDelete(g.id)}
+                  aria-label={`${g.title} 삭제`}
+                  className="w-8 h-8 flex items-center justify-center rounded-full shrink-0 transition-colors hover:bg-chalk/[0.06] cursor-pointer"
+                  style={{ color: "var(--text-faint)" }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3.6 3.6l8.8 8.8M12.4 3.6l-8.8 8.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
-    </div>
+
+      {/* ── 생성 모달 ── */}
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="새 목표 추가">
+        <div className="flex flex-col gap-5">
+          <Field label="목표 제목">
+            <input
+              type="text"
+              placeholder="예: 하루 스크린타임 2시간 이하로 줄이기"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              maxLength={200}
+              className={inputClass}
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="하루 목표 스크린타임" hint={`현재 설정: ${fmt(form.targetMinutes)} 이하`}>
+            <div className="flex flex-wrap gap-2">
+              {PRESETS.map((min) => {
+                const on = form.targetMinutes === min;
+                return (
+                  <button
+                    key={min}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, targetMinutes: min }))}
+                    className="h-8 px-3.5 rounded-full text-xs font-medium transition-colors cursor-pointer"
+                    style={{
+                      background: on ? "var(--accent-soft)" : "var(--bg-subtle)",
+                      color: on ? "var(--color-bloom)" : "var(--text-muted)",
+                      border: `1px solid ${on ? "rgba(61,219,135,0.3)" : "var(--border-card)"}`,
+                    }}
+                  >
+                    {fmt(min)}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={form.targetMinutes}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    targetMinutes: Math.max(1, Math.min(10080, parseInt(e.target.value) || 1)),
+                  }))
+                }
+                min={1}
+                max={10080}
+                className={`${inputClass} num w-24 text-center`}
+                style={{ ...inputStyle, letterSpacing: 0 }}
+              />
+              <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+                분 이하
+              </span>
+            </div>
+          </Field>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="시작일">
+              <input
+                type="date"
+                value={form.startDate}
+                onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))}
+                className={inputClass}
+                style={inputStyle}
+              />
+            </Field>
+            <Field label="종료일">
+              <input
+                type="date"
+                value={form.endDate}
+                onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))}
+                className={inputClass}
+                style={inputStyle}
+              />
+            </Field>
+          </div>
+
+          <ErrorNote>{formError}</ErrorNote>
+
+          <Pill onClick={handleSubmit} disabled={submitting} variant="accent" className="w-full">
+            {submitting ? "추가 중…" : "목표 추가"}
+          </Pill>
+        </div>
+      </Modal>
+    </AppShell>
   );
 }

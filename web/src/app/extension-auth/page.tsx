@@ -140,7 +140,7 @@ const btnStyle: React.CSSProperties = {
   width: '100%',
   padding: '13px',
   background: '#3DDB87',
-  color: '#0A0A0F',
+  color: '#040508',
   border: 'none',
   borderRadius: 999,
   fontSize: 15,
