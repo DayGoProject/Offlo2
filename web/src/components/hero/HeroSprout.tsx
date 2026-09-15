@@ -6,9 +6,9 @@ import { motion, useMotionValue, useSpring, useTransform, useScroll, useReducedM
 /* ── 히어로 오브젝트 ─────────────────────────────────────────────
    렌더 이미지 + CSS 3D 변환. 선택 근거는 .claude/rules/3d.md 참고.
 
-   이미지 배경은 페이지 배경(#040508)과 같은 색으로 구워져 있다.
-   마스크도 알파 채널도 blend 모드도 필요 없다 — 경계가 애초에 없다.
-   **페이지 배경색을 바꾸면 이미지를 다시 구워야 한다.**
+   이미지는 **투명 배경(알파)** 이다. Paper 원본 렌더(검은 배경)를 "검정 → 투명"으로
+   되돌려 뽑았으므로 어떤 배경·글로우·패럴랙스 위에 얹어도 사각형 경계가 생기지 않는다.
+   (예전엔 페이지색을 구운 불투명 이미지였고, 뒤로 지나가는 것을 사각형으로 가렸다 — 3d.md)
 
    움직임을 두 층으로 나눈 이유 —
    상시 흔들림을 JS(rAF)로 돌리면 프레임 루프가 멈춘 환경에서 통째로 죽는다.
@@ -20,7 +20,9 @@ import { motion, useMotionValue, useSpring, useTransform, useScroll, useReducedM
      안쪽 div         → 상시 부유·회전 (.offlo-sprout-float, CSS)
    ──────────────────────────────────────────────────────────── */
 
-const SRC = '/hero-sprout.webp'
+/* AVIF — 옅은 안개의 낮은 알파값을 보존한다. WebP는 알파 품질을 낮추면 안개가 계단으로
+   뭉개져 윤곽선이 생기고, 무손실 알파는 120 kB가 된다 (3d.md) */
+const SRC = '/hero-sprout.avif'
 
 export default function HeroSprout({ className = '' }: { className?: string }) {
   const wrap = useRef<HTMLDivElement>(null)

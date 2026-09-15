@@ -6,13 +6,9 @@ import { getPlantLevel } from "@/lib/garden-utils";
 /**
  * 레벨에 맞는 유리 식물 렌더를 그린다.
  *
- * 이미지에는 카드 배경색(#0B0D11)이 구워져 있다 — 알파 대신 배경색을 합성한
- * 이유는 `.claude/rules/3d.md` 참고(알파 버전은 용량이 8배가 된다).
- * 그래서 **반드시 --bg-card 위에만 놓는다.** 페이지 바탕에 직접 얹으면
- * 사각형 경계가 다시 보인다.
- *
- * 그래도 렌더의 글로우가 사각형으로 잘린 흔적이 남을 수 있어 방사형 마스크로
- * 가장자리를 풀어준다.
+ * 이미지는 투명 배경 AVIF라 카드·글로우 등 어떤 면 위에 얹어도 된다.
+ * `unoptimized` — Next 이미지 최적화가 WebP로 다시 인코딩하면 옅은 안개의 알파가
+ * 계단으로 뭉개질 수 있다. 검증한 AVIF를 그대로 내보낸다 (.claude/rules/3d.md).
  */
 export default function PlantImage({
   totalMinutes,
@@ -30,14 +26,7 @@ export default function PlantImage({
   return (
     <div
       className={`relative shrink-0 max-w-full ${className}`}
-      style={{
-        width: size,
-        height: size,
-        aspectRatio: "1 / 1",
-        // 가장자리 40%를 서서히 풀어 크롭 단면을 지운다
-        maskImage: "radial-gradient(circle at 50% 50%, #000 55%, transparent 78%)",
-        WebkitMaskImage: "radial-gradient(circle at 50% 50%, #000 55%, transparent 78%)",
-      }}
+      style={{ width: size, height: size, aspectRatio: "1 / 1" }}
     >
       <Image
         src={level.image}
@@ -45,6 +34,7 @@ export default function PlantImage({
         fill
         sizes={`${size}px`}
         priority={priority}
+        unoptimized
         className="object-contain select-none pointer-events-none"
         draggable={false}
       />

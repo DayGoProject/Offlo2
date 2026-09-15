@@ -463,10 +463,11 @@ export default function GardenPage() {
                         }}
                       >
                         <Image
-                          src={l.image}
+                          src={l.thumb}
                           alt={l.name}
                           width={46}
                           height={46}
+                          unoptimized
                           className="shrink-0"
                           style={{ opacity: current ? 1 : reached ? 0.45 : 0.22 }}
                         />

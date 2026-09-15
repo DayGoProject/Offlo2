@@ -16,7 +16,8 @@ export function RevealLines({
   style,
   delay = 0,
 }: {
-  lines: string[]
+  /** 줄 안에서 핵심어에 색을 입힐 수 있도록 ReactNode를 받는다 */
+  lines: ReactNode[]
   className?: string
   style?: React.CSSProperties
   delay?: number
@@ -28,7 +29,7 @@ export function RevealLines({
   return (
     <div ref={ref} className={className} style={style}>
       {lines.map((line, i) => (
-        <span key={line + i} className="block overflow-hidden">
+        <span key={i} className="block overflow-hidden">
           <motion.span
             className="block"
             initial={reduced ? undefined : { y: '105%' }}
