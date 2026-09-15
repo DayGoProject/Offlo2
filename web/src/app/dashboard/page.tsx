@@ -11,6 +11,7 @@ import PageHeader, { Pill } from "@/components/app/PageHeader";
 import Stat, { StatRow } from "@/components/app/Stat";
 import PlantImage from "@/components/garden/PlantImage";
 import { fmt, fmtHM, fmtDateEyebrow } from "@/lib/format";
+import { kstDateKey, kstWeek, DAY_MS } from "@/lib/kst";
 import {
   getPlantLevel,
   nextPlantLevel,
@@ -46,28 +47,20 @@ interface WeekBar {
 
 /* ── 유틸 ─────────────────────────────────────────────────────── */
 
-/** 월요일 시작 7칸. 미래 요일은 흐리게 그린다. */
+/** 월요일 시작 7칸(KST). 미래 요일은 흐리게 그린다. */
 function buildWeek(analyses: Analysis[]): WeekBar[] {
   const DAY = ["일", "월", "화", "수", "목", "금", "토"];
-  const today = new Date();
-  const offsetToMonday = (today.getDay() + 6) % 7;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - offsetToMonday);
+  const { days, todayIndex } = kstWeek();
 
+  // createdAt(UTC ISO)을 앞 10자로 자르면 오전 9시 전 분석이 전날 칸에 들어간다 — 반드시 KST 키로
   const daily = analyses.filter((a) => a.periodType === "daily");
 
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const match = daily.find((a) => a.createdAt.slice(0, 10) === key);
-    return {
-      day: DAY[d.getDay()],
-      minutes: match?.totalMinutes ?? 0,
-      isToday: i === offsetToMonday,
-      isFuture: i > offsetToMonday,
-    };
-  });
+  return days.map(({ key, dow }, i) => ({
+    day: DAY[dow],
+    minutes: daily.find((a) => kstDateKey(a.createdAt) === key)?.totalMinutes ?? 0,
+    isToday: i === todayIndex,
+    isFuture: i > todayIndex,
+  }));
 }
 
 /** 목표 기간에서 오늘까지 며칠이 지났는지 (0 ~ 전체 일수) */
@@ -183,9 +176,12 @@ export default function DashboardPage() {
   if (authLoading || !user) return null;
 
   /* ── 파생값 ── */
+  // "최신 기록"이 아니라 날짜가 오늘·어제(KST)인 기록만 쓴다 — 사흘 전 기록을 오늘로 보여주지 않는다
   const daily = analyses.filter((a) => a.periodType === "daily");
-  const today = daily[0] ?? null;
-  const yesterday = daily[1] ?? null;
+  const todayKey = kstDateKey();
+  const yesterdayKey = kstDateKey(Date.now() - DAY_MS);
+  const today = daily.find((a) => kstDateKey(a.createdAt) === todayKey) ?? null;
+  const yesterday = daily.find((a) => kstDateKey(a.createdAt) === yesterdayKey) ?? null;
   const diff = today && yesterday ? yesterday.totalMinutes - today.totalMinutes : null;
 
   const streak = animalData?.streak ?? 0;

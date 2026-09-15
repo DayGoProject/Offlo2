@@ -10,9 +10,11 @@ import Segmented from "@/components/app/Segmented";
 import TrendLine from "@/components/charts/TrendLine";
 import { fmtHM, fmtDate, fmtDateShort } from "@/lib/format";
 
+/* 저장 형식은 AI 분석 결과 그대로다 (`lib/ai.ts`의 AppUsage) — 필드명은 `name`이 아니라 `appName` */
 interface AppUsage {
-  name?: string;
+  appName?: string;
   minutes?: number;
+  category?: string;
 }
 
 interface Analysis {
@@ -34,7 +36,7 @@ function topApps(a: Analysis): string {
   return [...a.apps]
     .sort((x, y) => (y.minutes ?? 0) - (x.minutes ?? 0))
     .slice(0, 2)
-    .map((x) => x.name)
+    .map((x) => x.appName)
     .filter(Boolean)
     .join(" · ");
 }

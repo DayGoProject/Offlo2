@@ -8,6 +8,7 @@ import PageHeader, { Pill } from "@/components/app/PageHeader";
 import Modal from "@/components/app/Modal";
 import Field, { ErrorNote, inputClass, inputStyle } from "@/components/app/Field";
 import { fmt, fmtDate } from "@/lib/format";
+import { kstDateKey, DAY_MS } from "@/lib/kst";
 
 /* ── 타입 ──────────────────────────────────────────────────────── */
 
@@ -178,8 +179,9 @@ export default function GoalsPage() {
   }
 
   function openModal() {
-    const today = new Date().toISOString().slice(0, 10);
-    const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    // UTC 날짜로 채우면 오전 9시(KST) 전에 열었을 때 시작일이 어제가 된다
+    const today = kstDateKey();
+    const nextWeek = kstDateKey(Date.now() + 7 * DAY_MS);
     setForm({ title: "", targetMinutes: 60, startDate: today, endDate: nextWeek });
     setFormError("");
     setShowModal(true);

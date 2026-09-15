@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AnimalTypeId, AnimalStatus } from '@/lib/garden-utils'
 import { ANIMAL_STAGES } from '@/lib/garden-utils'
+import { kstDateKey } from '@/lib/kst'
 
 type AnimalStage = typeof ANIMAL_STAGES[number]
 
@@ -468,10 +469,9 @@ export default function Animal3D({ typeId, stage, isHungry, effectiveStreak }: {
     return () => clearInterval(id)
   }, [])
 
-  /* 쓰다듬기 횟수 불러오기 */
+  /* 쓰다듬기 횟수 불러오기 — 날짜 키는 KST. UTC로 자르면 오전 9시에 초기화된다 */
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    setPetCount(parseInt(localStorage.getItem(`offlo_pet_${today}`) ?? '0', 10))
+    setPetCount(parseInt(localStorage.getItem(`offlo_pet_${kstDateKey()}`) ?? '0', 10))
   }, [])
 
   /* 파티클 생성 */
@@ -518,8 +518,7 @@ export default function Animal3D({ typeId, stage, isHungry, effectiveStreak }: {
     /* 쓰다듬기 횟수 */
     setPetCount(c => {
       const next = c + 1
-      const today = new Date().toISOString().slice(0, 10)
-      localStorage.setItem(`offlo_pet_${today}`, String(next))
+      localStorage.setItem(`offlo_pet_${kstDateKey()}`, String(next))
       return next
     })
   }, [typeId, stage.status, isHungry, spawnParticles])
