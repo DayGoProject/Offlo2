@@ -28,14 +28,14 @@ type Obj = {
 }
 
 const OBJECTS: Obj[] = [
-  { src: '/frag-leaf-a.webp', x: 8, y: 18, depth: 0.18, size: 120, float: 'a', spin: -14 },
-  { src: '/frag-leaf-b.webp', x: 88, y: 12, depth: 0.26, size: 96, float: 'b', spin: 22 },
-  { src: '/frag-stem.webp', x: 72, y: 62, depth: 0.12, size: 90, float: 'c', spin: 8 },
-  { src: '/frag-leaf-b.webp', x: 18, y: 74, depth: 0.44, size: 150, float: 'c', spin: -30 },
-  { src: '/frag-leaf-a.webp', x: 94, y: 46, depth: 0.58, size: 190, float: 'a', spin: 16 },
-  { src: '/frag-stem.webp', x: 4, y: 44, depth: 0.34, size: 120, float: 'b', spin: -6 },
-  { src: '/frag-leaf-b.webp', x: 62, y: 88, depth: 0.7, size: 210, float: 'a', spin: 34 },
-  { src: '/frag-leaf-a.webp', x: 30, y: 30, depth: 0.08, size: 78, float: 'b', spin: 10 },
+  { src: '/frag-leaf-a.avif', x: 8, y: 18, depth: 0.18, size: 120, float: 'a', spin: -14 },
+  { src: '/frag-leaf-b.avif', x: 88, y: 12, depth: 0.26, size: 96, float: 'b', spin: 22 },
+  { src: '/frag-stem.avif', x: 72, y: 62, depth: 0.12, size: 90, float: 'c', spin: 8 },
+  { src: '/frag-leaf-b.avif', x: 18, y: 74, depth: 0.44, size: 150, float: 'c', spin: -30 },
+  { src: '/frag-leaf-a.avif', x: 94, y: 46, depth: 0.58, size: 190, float: 'a', spin: 16 },
+  { src: '/frag-stem.avif', x: 4, y: 44, depth: 0.34, size: 120, float: 'b', spin: -6 },
+  { src: '/frag-leaf-b.avif', x: 62, y: 88, depth: 0.7, size: 210, float: 'a', spin: 34 },
+  { src: '/frag-leaf-a.avif', x: 30, y: 30, depth: 0.08, size: 78, float: 'b', spin: 10 },
 ]
 
 function Floater({ o, progress }: { o: Obj; progress: MotionValue<number> }) {

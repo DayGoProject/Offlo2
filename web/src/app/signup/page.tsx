@@ -127,7 +127,7 @@ export default function SignupPage() {
         <h1 className="text-center text-2xl font-extrabold tracking-tight mb-1.5 text-chalk">
           회원가입
         </h1>
-        <p className="text-center text-sm text-chalk/50 mb-7">무료로 시작해보세요</p>
+        <p className="text-center text-sm text-chalk/50 mb-7">화면 밖의 하루를 시작해 보세요</p>
 
         {/* Google */}
         <button

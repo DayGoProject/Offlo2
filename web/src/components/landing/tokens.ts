@@ -4,4 +4,6 @@ export const VOID = '#040508' // --color-void
 export const CHALK = '#D8D8D8' // --color-chalk
 export const MIST = 'rgba(216,216,216,0.45)' // --color-chalk-45
 export const HAIR = 'rgba(216,216,216,0.22)' // --color-chalk-22
+export const LINE = 'rgba(216,216,216,0.10)' // --color-line
 export const BLOOM = '#3DDB87' // --color-bloom
+export const BLOOM_SOFT = 'rgba(61,219,135,0.13)' // --color-bloom-12

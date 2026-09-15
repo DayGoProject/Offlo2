@@ -1,7 +1,8 @@
 'use client'
 
-import SectionShell, { SectionLabel, CHALK, MIST } from './SectionShell'
+import SectionShell, { SectionLabel, CHALK, MIST, BLOOM } from './SectionShell'
 import { RevealLines, RevealScale } from './Reveal'
+import FeatureList from './FeatureList'
 
 const APPS = [
   { name: '인스타그램', pct: 72, time: '1h 42m', alpha: 1 },
@@ -13,22 +14,36 @@ const APPS = [
 /* 03 — AI 분석. 카드 데이터는 실제 analyses 스키마(apps · detoxScore)를 따른다. */
 export default function Analysis() {
   return (
-    <SectionShell variant={0} index={3} indexAlign="left">
-      <div className="flex flex-col lg:flex-row lg:items-center gap-14 lg:gap-20">
-        <div className="flex flex-col gap-6 lg:gap-7 lg:w-[46%] shrink-0">
+    <SectionShell
+      variant={0}
+      index={3}
+      indexAlign="left"
+      glow="right-[-10%] top-1/2 -translate-y-1/2 w-[min(760px,120vw)] aspect-square"
+    >
+      <div className="flex flex-col lg:flex-row lg:items-center gap-14 lg:gap-[60px]">
+        <div className="flex flex-col gap-6 lg:gap-7 lg:w-[41%] shrink-0">
           <SectionLabel>AI 분석</SectionLabel>
           <RevealLines
-            lines={['스크린샷 한 장이면', '충분합니다.']}
-            className="text-[clamp(30px,4.4vw,56px)] font-normal tracking-[-0.04em]"
+            lines={[
+              <>
+                스크린샷 <span style={{ color: BLOOM }}>한 장이면</span>
+              </>,
+              '충분합니다.',
+            ]}
+            className="text-[clamp(30px,4.4vw,56px)] font-semibold tracking-[-0.035em]"
             style={{ color: CHALK, lineHeight: 1.3214 }}
           />
           <p
-            className="text-[15px] sm:text-[16px] tracking-[-0.02em] max-w-[400px]"
+            className="text-[15px] sm:text-[16px] tracking-[-0.02em] max-w-[420px] break-keep"
             style={{ color: MIST, lineHeight: 1.68 }}
           >
             설정 화면을 캡처해 올리면 Gemini가 앱별 사용 패턴을 읽고, 중독 신호와 개선 방향을
             정리해 돌려줍니다. 이미지는 분석 즉시 폐기됩니다.
           </p>
+          <FeatureList
+            className="max-w-[420px]"
+            items={['앱별 사용시간 분해', '중독 신호 · 심리적 원인 진단', '맞춤 전략 · AI 코치와 대화']}
+          />
         </div>
 
         {/* 분석 결과 카드 — 원근을 준 판 */}
@@ -57,7 +72,7 @@ export default function Analysis() {
 
           <div className="flex items-baseline gap-3 pt-5 pb-6">
             <span
-              className="font-display text-[clamp(38px,4.6vw,56px)] font-normal tracking-[-0.05em]"
+              className="font-display text-[clamp(38px,4.6vw,56px)] font-semibold tracking-[-0.05em]"
               style={{ color: CHALK, lineHeight: 1 }}
             >
               4<span className="text-[0.54em]">h</span> 12<span className="text-[0.54em]">m</span>
@@ -108,8 +123,8 @@ export default function Analysis() {
                   <div className="w-[74%] h-[5px] rounded-full" style={{ background: '#3DDB87' }} />
                 </div>
                 <span
-                  className="font-display text-[22px] font-medium tracking-[-0.02em]"
-                  style={{ color: CHALK }}
+                  className="font-display text-[22px] font-semibold tracking-[-0.02em]"
+                  style={{ color: BLOOM }}
                 >
                   74
                 </span>

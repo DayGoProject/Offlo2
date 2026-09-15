@@ -1,33 +1,40 @@
 'use client'
 
-import SectionShell, { SectionLabel, CHALK, MIST, HAIR } from './SectionShell'
+import SectionShell, { SectionLabel, CHALK, MIST, BLOOM } from './SectionShell'
+import FeatureList from './FeatureList'
 
 /* 05 — 크롬 확장 프로그램. 차단 오버레이 목업. */
 export default function Extension() {
   return (
-    <SectionShell variant={2} index={5} indexAlign="right">
+    <SectionShell
+      variant={2}
+      index={5}
+      indexAlign="right"
+      glow="left-[-8%] top-1/2 -translate-y-1/2 w-[min(760px,120vw)] aspect-square"
+    >
       <div className="flex flex-col lg:flex-row-reverse lg:items-center gap-14 lg:gap-20">
-        <div className="flex flex-col gap-6 lg:gap-7 lg:w-[38%] shrink-0">
+        <div className="flex flex-col gap-6 lg:gap-7 lg:w-[40%] shrink-0">
           <SectionLabel>크롬 확장 프로그램</SectionLabel>
           <h2
-            className="text-[clamp(30px,4.2vw,52px)] font-normal tracking-[-0.04em]"
+            className="text-[clamp(30px,4.2vw,52px)] font-semibold tracking-[-0.035em]"
             style={{ color: CHALK, lineHeight: 1.3462 }}
           >
             브라우저에서
             <br />
-            바로 막습니다.
+            바로 <span style={{ color: BLOOM }}>막습니다.</span>
           </h2>
           <p
-            className="text-[15px] sm:text-[16px] tracking-[-0.02em]"
+            className="text-[15px] sm:text-[16px] tracking-[-0.02em] break-keep"
             style={{ color: MIST, lineHeight: 1.68 }}
           >
             차단할 사이트를 등록하고 디톡스 세션을 시작하면, 세션이 끝날 때까지 접속이 막힙니다.
             버틴 시간은 그대로 식물의 경험치가 됩니다.
           </p>
+          <FeatureList items={['차단할 사이트 등록', '디톡스 세션 타이머', '버틴 시간은 식물 경험치로 적립']} />
           <div className="flex items-center gap-3 pt-1">
             <span
-              className="flex items-center px-4 h-9 rounded-full bg-white text-[13px] font-semibold"
-              style={{ color: '#040508' }}
+              className="flex items-center px-[22px] h-[42px] rounded-full text-[14px] font-semibold"
+              style={{ background: BLOOM, color: '#040508' }}
             >
               확장 프로그램 설치
             </span>
@@ -78,7 +85,7 @@ export default function Extension() {
               <circle cx="22" cy="22" r="20" stroke="#3DDB87" strokeWidth="1.4" strokeOpacity="0.55" />
               <path d="M8 8l28 28" stroke="#3DDB87" strokeWidth="1.4" strokeOpacity="0.55" strokeLinecap="round" />
             </svg>
-            <p className="text-[22px] sm:text-[24px] font-medium tracking-[-0.02em]" style={{ color: CHALK }}>
+            <p className="text-[22px] sm:text-[24px] font-semibold tracking-[-0.02em]" style={{ color: CHALK }}>
               지금은 디톡스 중입니다
             </p>
             <p className="text-[14px]" style={{ color: MIST }}>
@@ -86,7 +93,7 @@ export default function Extension() {
             </p>
             <div className="flex items-baseline gap-2 pt-2">
               <span
-                className="font-display text-[clamp(38px,5vw,52px)] font-normal tracking-[-0.04em]"
+                className="font-display text-[clamp(38px,5vw,52px)] font-semibold tracking-[-0.04em]"
                 style={{ color: '#3DDB87', lineHeight: 1 }}
               >
                 18:42

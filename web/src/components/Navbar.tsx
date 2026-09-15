@@ -163,7 +163,7 @@ export default function Navbar() {
                 href="/signup"
                 className="bg-brand text-[#040508] text-sm font-bold px-4 py-2 rounded-full hover:opacity-90 transition-opacity"
               >
-                무료 시작
+                시작하기
               </Link>
             </>
           )}
