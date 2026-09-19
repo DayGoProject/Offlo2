@@ -1,4 +1,6 @@
-import { verifyIdToken, handleApiError } from "@/lib/firebase-admin";
+import { verifyIdToken, apiError, handleApiError } from "@/lib/firebase-admin";
+import { prisma } from "@/lib/prisma";
+import { assertDailyAnalysisAvailable } from "@/lib/daily-analysis";
 import {
   DAILY_ANALYSIS_PROMPT,
   assertInlineImage,
@@ -18,16 +20,21 @@ export const maxDuration = 60;
  *
  * 이미지는 저장하지 않는다 — 클라이언트가 압축해 보낸 데이터를 그대로 Gemini에 전달하고 버린다.
  * 분석 결과 저장은 프론트엔드가 POST /api/analyses로 처리.
+ * 오늘 이미 일간 분석을 저장했으면 Gemini를 부르지 않고 409 — `lib/daily-analysis.ts`
  */
 export async function POST(req: Request) {
   try {
-    await verifyIdToken(req);
+    const uid = await verifyIdToken(req);
 
     const { imageBase64, mimeType } = (await req.json()) as {
       imageBase64: unknown;
       mimeType: unknown;
     };
     assertInlineImage(imageBase64, mimeType);
+
+    const user = await prisma.user.findUnique({ where: { uid }, select: { id: true } });
+    if (!user) throw apiError("사용자를 찾을 수 없습니다.", 404);
+    await assertDailyAnalysisAvailable(user.id);
 
     const model = getGeminiModel();
     const result = await model.generateContent([

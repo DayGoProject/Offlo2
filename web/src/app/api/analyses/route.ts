@@ -1,6 +1,7 @@
 import { verifyIdTokenFull, apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
 import { onAnalysisComplete } from "@/lib/garden";
+import { assertDailyAnalysisAvailable } from "@/lib/daily-analysis";
 
 /* ── GET /api/analyses — 내 분석 목록 조회 ─────────────────── */
 
@@ -68,19 +69,8 @@ export async function POST(req: Request): Promise<Response> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const d = body as any;
 
-    // 일간 분석 중복 방지 (KST 기준 하루 1회)
-    if (d.periodType === "daily") {
-      const KST_OFFSET = 9 * 60 * 60 * 1000;
-      const kstNow = new Date(Date.now() + KST_OFFSET);
-      kstNow.setUTCHours(0, 0, 0, 0);
-      const todayStartUTC = new Date(kstNow.getTime() - KST_OFFSET);
-
-      const existing = await prisma.analysis.findFirst({
-        where: { userId: user.id, periodType: "daily", createdAt: { gte: todayStartUTC } },
-        select: { id: true },
-      });
-      if (existing) throw apiError("오늘은 이미 일간 분석을 완료했습니다. 일간 분석은 하루에 한 번만 가능합니다.", 409);
-    }
+    // 일간 분석 중복 방지 (KST 기준 하루 1회) — AI 분석(`/api/ai/analyze`)에서도 같은 확인을 먼저 한다
+    if (d.periodType === "daily") await assertDailyAnalysisAvailable(user.id);
 
     const analysis = await prisma.analysis.create({
       data: {
