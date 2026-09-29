@@ -1,7 +1,7 @@
 import { verifyIdTokenFull, apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
 import { onAnalysisComplete } from "@/lib/garden";
-import { assertDailyAnalysisAvailable } from "@/lib/daily-analysis";
+import { assertDailyAnalysisAvailable, assertWeeklyAnalysisAvailable } from "@/lib/analysis-limits";
 
 /* ── GET /api/analyses — 내 분석 목록 조회 ─────────────────── */
 
@@ -69,8 +69,9 @@ export async function POST(req: Request): Promise<Response> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const d = body as any;
 
-    // 일간 분석 중복 방지 (KST 기준 하루 1회) — AI 분석(`/api/ai/analyze`)에서도 같은 확인을 먼저 한다
+    // 중복 방지 (KST 기준 일간 하루 1회 · 주간 한 주 1회) — AI 분석(`/api/ai/*`)에서도 같은 확인을 먼저 한다
     if (d.periodType === "daily") await assertDailyAnalysisAvailable(user.id);
+    else await assertWeeklyAnalysisAvailable(user.id);
 
     const analysis = await prisma.analysis.create({
       data: {

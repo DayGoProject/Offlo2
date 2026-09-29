@@ -1,6 +1,6 @@
 import { verifyIdToken, apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
-import { assertDailyAnalysisAvailable } from "@/lib/daily-analysis";
+import { assertDailyAnalysisAvailable } from "@/lib/analysis-limits";
 import {
   DAILY_ANALYSIS_PROMPT,
   assertInlineImage,
@@ -20,7 +20,7 @@ export const maxDuration = 60;
  *
  * 이미지는 저장하지 않는다 — 클라이언트가 압축해 보낸 데이터를 그대로 Gemini에 전달하고 버린다.
  * 분석 결과 저장은 프론트엔드가 POST /api/analyses로 처리.
- * 오늘 이미 일간 분석을 저장했으면 Gemini를 부르지 않고 409 — `lib/daily-analysis.ts`
+ * 오늘 이미 일간 분석을 저장했으면 Gemini를 부르지 않고 409 — `lib/analysis-limits.ts`
  */
 export async function POST(req: Request) {
   try {

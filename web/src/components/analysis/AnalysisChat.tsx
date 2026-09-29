@@ -46,6 +46,8 @@ export default function AnalysisChat({
   const [pendingImage, setPendingImage] = useState<{ file: File; preview: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [attachError, setAttachError] = useState("");
+  /** 보내지 못했을 때 — 보낸 글과 사진은 입력창으로 돌아와 있다 */
+  const [sendError, setSendError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -74,6 +76,10 @@ export default function AnalysisChat({
   async function handleSend() {
     if ((!input.trim() && !pendingImage) || sending || !user) return;
 
+    // 보내지 못하면 그대로 되돌려 놓는다
+    const draft = input;
+    const draftImage = pendingImage;
+
     let inlineImage: { imageBase64: string; mimeType: string } | undefined;
     let imagePreview: string | undefined;
 
@@ -100,6 +106,7 @@ export default function AnalysisChat({
     setInput("");
     setPendingImage(null);
     setAttachError("");
+    setSendError("");
     setSending(true);
 
     try {
@@ -118,7 +125,12 @@ export default function AnalysisChat({
         err && typeof err === "object" && "message" in err
           ? (err as { message: string }).message
           : "오류가 발생했습니다. 다시 시도해주세요.";
-      setMessages((prev) => [...prev, { role: "model", text: `⚠️ ${msg}` }]);
+      // 실패한 메시지를 대화에 남기지 않는다 — "⚠️ …"를 모델 메시지로 끼우면 **다음 요청 히스토리에 섞여 코치에게 간다**.
+      // 보낸 글과 사진은 입력창으로 되돌리고, 에러는 입력줄 위에 따로 띄운다
+      setMessages((prev) => prev.filter((m) => m !== userMessage));
+      setInput(draft);
+      setPendingImage(draftImage);
+      setSendError(msg);
     } finally {
       setSending(false);
     }
@@ -238,9 +250,9 @@ export default function AnalysisChat({
         </div>
       )}
 
-      {attachError && (
+      {(attachError || sendError) && (
         <p className="text-xs" style={{ color: "var(--danger)" }}>
-          {attachError}
+          {attachError || sendError}
         </p>
       )}
 

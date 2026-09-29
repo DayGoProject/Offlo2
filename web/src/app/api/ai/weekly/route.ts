@@ -1,4 +1,6 @@
 import { verifyIdToken, handleApiError, apiError } from "@/lib/firebase-admin";
+import { prisma } from "@/lib/prisma";
+import { assertWeeklyAnalysisAvailable } from "@/lib/analysis-limits";
 import { buildWeeklyPrompt, getGeminiModel, parseGeminiJson, type DailySummary } from "@/lib/ai";
 
 export const runtime = "nodejs";
@@ -10,10 +12,12 @@ const WEEKLY_REQUIRED_DAYS = 7;
  * POST /api/ai/weekly — 주간 종합 분석
  * body: { dailySummaries: DailySummary[] }  (이번 주 월~일 일간 분석 7개)
  * 반환: { analysisData: AnalysisResult }
+ *
+ * 이번 주 종합 분석을 이미 받았으면 Gemini를 부르지 않고 409 — `lib/analysis-limits.ts`
  */
 export async function POST(req: Request) {
   try {
-    await verifyIdToken(req);
+    const uid = await verifyIdToken(req);
 
     const { dailySummaries } = (await req.json()) as { dailySummaries: unknown };
 
@@ -39,6 +43,11 @@ export async function POST(req: Request) {
         throw apiError("dailySummaries 형식이 올바르지 않습니다.", 400);
       }
     }
+
+    // 한 주 1회는 Gemini를 부르기 전에 확인한다 — lib/analysis-limits.ts
+    const user = await prisma.user.findUnique({ where: { uid }, select: { id: true } });
+    if (!user) throw apiError("사용자를 찾을 수 없습니다.", 404);
+    await assertWeeklyAnalysisAvailable(user.id);
 
     const model = getGeminiModel();
     const result = await model.generateContent([

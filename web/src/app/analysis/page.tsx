@@ -11,6 +11,7 @@ import PageHeader, { Pill } from "@/components/app/PageHeader";
 import Modal from "@/components/app/Modal";
 import { ErrorNote } from "@/components/app/Field";
 import { fmtHM, relDate } from "@/lib/format";
+import { kstDateKey, kstWeek } from "@/lib/kst";
 
 // HEIC은 브라우저가 디코딩하지 못해 제외 (스크린샷은 PNG/JPG로 저장됨)
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -18,21 +19,20 @@ const MAX_SIZE_MB = 10;
 const WEEKLY_THRESHOLD = 7; // 주간 분석에 필요한 일간 분석 수
 const DAYS = ["월", "화", "수", "목", "금", "토", "일"];
 
-/** 두 Date가 같은 날(로컬 기준)인지 확인 */
-function isSameDay(a: Date, b: Date): boolean {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-}
-
-/** 이번 주 월요일 00:00 KST를 UTC 밀리초로 */
-function weekStartUTC(): number {
-  const KST_OFFSET = 9 * 60 * 60 * 1000;
-  const kstNow = new Date(Date.now() + KST_OFFSET);
-  const dayOfWeek = kstNow.getUTCDay();
-  const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const kstMonday = new Date(kstNow);
-  kstMonday.setUTCDate(kstNow.getUTCDate() + daysToMonday);
-  kstMonday.setUTCHours(0, 0, 0, 0);
-  return kstMonday.getTime() - KST_OFFSET;
+/**
+ * 이번 주(KST 월~일) 날짜별 기록 — 같은 날 여럿이면 최신이 이긴다 (API가 최신순으로 준다).
+ *
+ * 날짜는 전부 KST 날짜 키로 다룬다 (`lib/kst.ts`) — 서버의 일간 1회 · 주간 1회 경계와 같아야 한다.
+ * 브라우저 시간대로 "오늘"을 재면 해외에서 서버와 어긋나고, 기록을 순서대로 요일 칸에 넣으면 요일이 밀린다.
+ */
+function byWeekday<T extends { createdAt: Date }>(records: T[]): Map<string, T> {
+  const keys = new Set(kstWeek().days.map((d) => d.key));
+  const map = new Map<string, T>();
+  for (const r of records) {
+    const key = kstDateKey(r.createdAt);
+    if (keys.has(key) && !map.has(key)) map.set(key, r);
+  }
+  return map;
 }
 
 interface DailyRecord {
@@ -60,6 +60,8 @@ export default function AnalysisPage() {
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
   const [recordsLoading, setRecordsLoading] = useState(true);
   const [hasUploadedToday, setHasUploadedToday] = useState(false);
+  /** 이번 주에 이미 받은 주간 분석 — 있으면 다시 만들지 않고 결과로 보낸다 */
+  const [weeklyDoneId, setWeeklyDoneId] = useState<string | null>(null);
   const [weeklyStatus, setWeeklyStatus] = useState<"idle" | "generating">("idle");
   const [weeklyError, setWeeklyError] = useState<string | null>(null);
 
@@ -67,18 +69,20 @@ export default function AnalysisPage() {
     if (!loading && !user) router.replace("/login");
   }, [user, loading, router]);
 
-  // 일간 분석 기록 로드 (이번 주 분석 현황용)
+  // 분석 기록 로드 (이번 주 현황 · 오늘 완료 여부 · 이번 주 주간 분석)
   useEffect(() => {
     if (!user) return;
     (async () => {
       try {
         const token = await user.getIdToken();
-        const res = await fetch(`/api/analyses?periodType=daily&limit=${WEEKLY_THRESHOLD}&includeApps=1`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) return;
+        const headers = { Authorization: `Bearer ${token}` };
+        const [dailyRes, weeklyRes] = await Promise.all([
+          fetch(`/api/analyses?periodType=daily&limit=${WEEKLY_THRESHOLD}&includeApps=1`, { headers }),
+          fetch(`/api/analyses?periodType=weekly&limit=1`, { headers }),
+        ]);
+        if (!dailyRes.ok) return;
 
-        const json = await res.json();
+        const json = await dailyRes.json();
         const raw: Array<{
           id: string;
           detoxScore: number;
@@ -87,10 +91,10 @@ export default function AnalysisPage() {
           apps: { appName: string; minutes: number; category: string }[];
         }> = json.analyses ?? [];
 
-        // 이번 주 월요일 이후 데이터만 필터
-        const start = weekStartUTC();
+        // 이번 주(KST 월~일) 기록만 — 하루 1회라 최근 7건이면 이번 주가 다 들어온다
+        const thisWeek = new Set(kstWeek().days.map((d) => d.key));
         const records: DailyRecord[] = raw
-          .filter((a) => new Date(a.createdAt).getTime() >= start)
+          .filter((a) => thisWeek.has(kstDateKey(a.createdAt)))
           .map((a) => ({
             id: a.id,
             detoxScore: a.detoxScore,
@@ -100,8 +104,11 @@ export default function AnalysisPage() {
           }));
 
         setDailyRecords(records);
-        if (records.length > 0 && isSameDay(records[0].createdAt, new Date())) {
-          setHasUploadedToday(true);
+        setHasUploadedToday(records.some((r) => kstDateKey(r.createdAt) === kstDateKey()));
+
+        if (weeklyRes.ok) {
+          const latest: { id: string; createdAt: string } | undefined = (await weeklyRes.json()).analyses?.[0];
+          if (latest && thisWeek.has(kstDateKey(latest.createdAt))) setWeeklyDoneId(latest.id);
         }
       } catch {
         // 기록 로드 실패는 기능 저하 허용
@@ -190,8 +197,8 @@ export default function AnalysisPage() {
         apps: { appName: string; minutes: number; category: string }[];
       }> = json.analyses ?? [];
 
-      const start = weekStartUTC();
-      const weekRecords = raw.filter((a) => new Date(a.createdAt).getTime() >= start);
+      const thisWeek = new Set(kstWeek().days.map((d) => d.key));
+      const weekRecords = raw.filter((a) => thisWeek.has(kstDateKey(a.createdAt)));
 
       if (weekRecords.length < WEEKLY_THRESHOLD) {
         throw new Error(
@@ -244,6 +251,7 @@ export default function AnalysisPage() {
   const isLoading = status === "uploading" || status === "analyzing" || status === "saving";
   const canWeekly = dailyRecords.length >= WEEKLY_THRESHOLD;
   const needed = WEEKLY_THRESHOLD - dailyRecords.length;
+  const recordsByWeekday = byWeekday(dailyRecords);
 
   if (loading || !user) return null;
 
@@ -444,13 +452,12 @@ export default function AnalysisPage() {
             이번 주 일간 분석 {WEEKLY_THRESHOLD}개를 모두 완료하면 주간 종합 분석을 받을 수 있습니다. 매주 월요일 초기화됩니다.
           </p>
 
-          {/* 요일 칸 — 기록이 있으면 점수를 그 자리에 박는다 */}
+          {/* 요일 칸 — 기록이 있으면 **그 요일 자리에** 점수를 박는다 (순서대로 채우면 월요일을 건너뛴 주에 요일이 밀린다) */}
           <div className="flex gap-2 w-full">
-            {Array.from({ length: WEEKLY_THRESHOLD }).map((_, i) => {
-              // dailyRecords는 최신순이므로 뒤집어 월→일 순으로 채운다
-              const rec = dailyRecords[dailyRecords.length - 1 - i] ?? null;
+            {kstWeek().days.map((day, i) => {
+              const rec = recordsByWeekday.get(day.key) ?? null;
               return (
-                <div key={i} className="flex flex-col items-center gap-[7px] flex-1 min-w-0">
+                <div key={day.key} className="flex flex-col items-center gap-[7px] flex-1 min-w-0">
                   <div
                     className="flex items-center justify-center w-full h-[38px] rounded-lg shrink-0"
                     style={
@@ -479,7 +486,17 @@ export default function AnalysisPage() {
 
           {weeklyError && <ErrorNote>{weeklyError}</ErrorNote>}
 
-          {canWeekly ? (
+          {weeklyDoneId ? (
+            // 이번 주 종합 분석은 한 번이다 — 다시 만들지 않고 결과로 보낸다 (서버도 409로 막는다)
+            <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+              <span className="text-[13px] leading-[18px]" style={{ color: "var(--text-primary-soft)" }}>
+                이번 주 종합 분석을 마쳤어요
+              </span>
+              <Pill href={`/analysis/result/${weeklyDoneId}`} variant="accent" className="shrink-0">
+                종합 결과 보기
+              </Pill>
+            </div>
+          ) : canWeekly ? (
             <button
               onClick={handleWeeklyAnalysis}
               disabled={weeklyStatus === "generating"}
