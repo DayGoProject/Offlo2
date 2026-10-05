@@ -3,8 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AnimalTypeId, AnimalStatus } from '@/lib/garden-utils'
-import { ANIMAL_STAGES } from '@/lib/garden-utils'
-import { kstDateKey } from '@/lib/kst'
+import { ANIMAL_STAGES, PET_DAILY_CAP, affectionRatio } from '@/lib/garden-utils'
 
 type AnimalStage = typeof ANIMAL_STAGES[number]
 
@@ -13,6 +12,7 @@ type AnimalStage = typeof ANIMAL_STAGES[number]
 const MESSAGES: Record<string, string[]> = {
   egg:        ['뭔가 꿈틀거리는 소리가 나요...', '부화 중이에요... 💫', '얼른 부화하고 싶어요!'],
   hungry:     ['배고파요... 😢 오늘 분석 해줘요!', '밥 줘요! 빨리요!', '배꼽시계가 울려요...'],
+  petCapped:  ['오늘은 충분히 쓰다듬어 줬어요! 고마워요 😊', '내일 또 만나요! 💤', '벌써 행복이 가득해요 ❤️'],
   pet_cat:    ['냐냥~ 행복해요! ❤️', '그르릉... 좋아요!', '또 쓰다듬어줘요! 😺'],
   pet_dog:    ['왈왈! 기분 최고예요! 🐾', '꼬리 흔들흔들~', '또 해줘요! 😄'],
   pet_rabbit: ['폴짝폴짝~ 행복해요! 🐇', '귀가 간질간질해요! ✨', '냠냠~ 고마워요!'],
@@ -444,14 +444,18 @@ function Awning() {
 
 /* ── 메인 컴포넌트 ──────────────────────────────────────────── */
 
-export default function Animal3D({ typeId, stage, isHungry, effectiveStreak }: {
+export default function Animal3D({ typeId, stage, isHungry, effectiveStreak, petToday = 0, petTotal = 0, onPet }: {
   typeId: AnimalTypeId | null
   stage: AnimalStage
   isHungry: boolean
   effectiveStreak?: number
+  /** 오늘 서버에 인정된 쓰다듬기 횟수 · 누적(친밀도) — 서버 기록이 원본이다 (예전엔 localStorage) */
+  petToday?: number
+  petTotal?: number
+  /** 동물을 쓰다듬을 때마다 (알은 제외) — 기록은 부모가 묶어서 서버에 보낸다 */
+  onPet?: () => void
 }) {
   const [blink, setBlink] = useState(false)
-  const [petCount, setPetCount] = useState(0)
   const [particles, setParticles] = useState<Particle[]>([])
   const [message, setMessage] = useState<string | null>(null)
   const [isPetted, setIsPetted] = useState(false)
@@ -467,11 +471,6 @@ export default function Animal3D({ typeId, stage, isHungry, effectiveStreak }: {
       setTimeout(() => setBlink(false), 130)
     }, 3500)
     return () => clearInterval(id)
-  }, [])
-
-  /* 쓰다듬기 횟수 불러오기 — 날짜 키는 KST. UTC로 자르면 오전 9시에 초기화된다 */
-  useEffect(() => {
-    setPetCount(parseInt(localStorage.getItem(`offlo_pet_${kstDateKey()}`) ?? '0', 10))
   }, [])
 
   /* 파티클 생성 */
@@ -507,21 +506,19 @@ export default function Animal3D({ typeId, stage, isHungry, effectiveStreak }: {
     setTimeout(() => setIsPetted(false), 600)
     spawnParticles(e)
 
-    /* 말풍선 */
+    /* 말풍선 — 오늘 상한을 채웠으면 더는 기록되지 않는다고 알려 준다 (계속 쓰다듬을 수는 있다) */
     if (messageTimer.current) clearTimeout(messageTimer.current)
-    const pool = isHungry
-      ? MESSAGES.hungry
-      : MESSAGES[`pet_${typeId}`] ?? MESSAGES.idle_cat
+    const pool = petToday >= PET_DAILY_CAP
+      ? MESSAGES.petCapped
+      : isHungry
+        ? MESSAGES.hungry
+        : MESSAGES[`pet_${typeId}`] ?? MESSAGES.idle_cat
     setMessage(pickMessage(pool))
     messageTimer.current = setTimeout(() => setMessage(null), 2200)
 
-    /* 쓰다듬기 횟수 */
-    setPetCount(c => {
-      const next = c + 1
-      localStorage.setItem(`offlo_pet_${kstDateKey()}`, String(next))
-      return next
-    })
-  }, [typeId, stage.status, isHungry, spawnParticles])
+    /* 쓰다듬기 기록 — 서버에 묶어 보내는 일은 부모가 한다 */
+    onPet?.()
+  }, [typeId, stage.status, isHungry, spawnParticles, petToday, onPet])
 
   /* 쿠션 색상 */
   const cushionColor = stage.status === 'legend' ? '#FFD000'
@@ -530,7 +527,7 @@ export default function Animal3D({ typeId, stage, isHungry, effectiveStreak }: {
     : '#C8B3FF'
 
   /* 스탯 값 */
-  const affection = Math.min(petCount * 12, 100)
+  const affection = Math.round(affectionRatio(petTotal) * 100) // 지금 친밀도 레벨 안에서 다음 레벨까지
   const mood = isHungry ? 18 : isPetted ? 100 : 70
   const health = Math.min((effectiveStreak ?? 0) / 120 * 100, 100)
 
@@ -630,10 +627,10 @@ export default function Animal3D({ typeId, stage, isHungry, effectiveStreak }: {
             <span className="text-base font-extrabold" style={{ color: '#3A2A1A' }}>
               {stage.name !== '알' ? `${animalName} · ` : ''}{stage.name}
             </span>
-            {petCount > 0 && (
+            {petToday > 0 && (
               <span className="text-xs px-2 py-0.5 rounded-full font-bold"
                 style={{ background: 'rgba(61,219,135,0.15)', color: '#2BA86A' }}>
-                오늘 {petCount}번 ❤️
+                오늘 {petToday}/{PET_DAILY_CAP}번 ❤️
               </span>
             )}
           </div>

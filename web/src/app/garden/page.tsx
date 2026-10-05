@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -22,8 +22,18 @@ import {
   nextPlantLevel,
   getAnimalStage,
   getAnimalEmoji,
+  PET_DAILY_CAP,
+  EMPTY_PET,
+  affectionRatio,
+  applyPetTaps,
+  getAffectionLevel,
+  nextAffectionLevel,
+  normalizePet,
+  petTodayCount,
   type AnimalTypeId,
+  type PetRecord,
 } from "@/lib/garden-utils";
+import { kstDateKey } from "@/lib/kst";
 
 // 동물 SVG는 660줄짜리 클라이언트 전용 컴포넌트다. 식물 탭만 보는 사용자가
 // 이 코드를 받지 않도록 지연 로딩한다.
@@ -40,6 +50,8 @@ interface AnimalData {
   type: AnimalTypeId | null;
   streak: number;
   lastAnalysisDate?: string;
+  /** 쓰다듬기 기록(서버) — today는 date가 오늘(KST)일 때만 의미가 있다 */
+  pet: PetRecord;
 }
 
 type Tab = "plant" | "animal";
@@ -205,7 +217,7 @@ export default function GardenPage() {
   const router = useRouter();
 
   const [plant, setPlant] = useState<PlantData | null>(null);
-  const [animal, setAnimal] = useState<AnimalData>({ type: null, streak: 0 });
+  const [animal, setAnimal] = useState<AnimalData>({ type: null, streak: 0, pet: { ...EMPTY_PET } });
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("plant");
   const [selecting, setSelecting] = useState(false);
@@ -226,7 +238,7 @@ export default function GardenPage() {
         setPlant(plantSnap.exists() ? (plantSnap.data() as PlantData) : { totalDetoxMinutes: 0 });
         if (animalSnap.exists()) {
           const d = animalSnap.data();
-          setAnimal({ type: d.type ?? null, streak: d.streak ?? 0, lastAnalysisDate: d.lastAnalysisDate });
+          setAnimal({ type: d.type ?? null, streak: d.streak ?? 0, lastAnalysisDate: d.lastAnalysisDate, pet: normalizePet(d.pet) });
         }
       } catch (e) {
         // 실패해도 스켈레톤이 영원히 남지 않도록 finally에서 반드시 푼다
@@ -250,10 +262,72 @@ export default function GardenPage() {
       type: typeId,
       streak: reset ? 0 : prev.streak,
       lastAnalysisDate: reset ? undefined : prev.lastAnalysisDate,
+      pet: reset ? { ...EMPTY_PET } : prev.pet, // 동물을 바꾸면 쓰다듬기 기록도 0부터 (서버도 같다)
     }));
     setSelecting(false);
     setPending(null);
   }
+
+  /* ── 쓰다듬기 기록 ──
+     탭마다 서버를 부르지 않는다: 화면은 바로 올리고(낙관적), 1.2초 동안 더 안 누르면 모아서 한 번에 보낸다.
+     서버가 하루 상한(PET_DAILY_CAP)을 강제하고 돌려준 값이 진실이다. 페이지를 떠나거나 숨기면 남은 것을 보낸다. */
+  const pendingPets = useRef(0);
+  const petTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 낙관적 갱신이 빠르게 겹쳐도(한 렌더 안에서 여러 번 탭) 같은 값을 보도록 최신 상태를 ref로도 든다
+  const animalRef = useRef(animal);
+  useEffect(() => {
+    animalRef.current = animal;
+  }, [animal]);
+
+  const flushPets = useCallback(async () => {
+    if (petTimer.current) {
+      clearTimeout(petTimer.current);
+      petTimer.current = null;
+    }
+    const count = Math.min(pendingPets.current, PET_DAILY_CAP);
+    pendingPets.current = 0;
+    if (!user || count < 1) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/garden/pet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ count }),
+        keepalive: true,
+      });
+      if (res.ok) {
+        const d = await res.json();
+        // 서버 값이 진실이다. 보내는 동안 더 누른 몫(아직 서버에 안 간 것)은 그대로 얹어 숫자가 되돌아가 깜빡이지 않게 한다
+        const extra = pendingPets.current;
+        const merged = applyPetTaps({ date: d.date, today: d.today, total: d.total }, d.date, extra);
+        setAnimal((prev) => ({ ...prev, pet: merged.next }));
+      }
+    } catch (e) {
+      console.error(e); // 기록 실패는 조용히 — 화면 효과는 이미 났다
+    }
+  }, [user]);
+
+  const handlePet = useCallback(() => {
+    // 오늘 상한을 채웠으면 화면 효과만 — 기록도 서버 호출도 하지 않는다
+    const { next, accepted } = applyPetTaps(animalRef.current.pet, kstDateKey(), 1);
+    if (accepted < 1) return;
+    animalRef.current = { ...animalRef.current, pet: next };
+    setAnimal((prev) => ({ ...prev, pet: next }));
+    pendingPets.current += 1;
+    if (petTimer.current) clearTimeout(petTimer.current);
+    petTimer.current = setTimeout(flushPets, 1200);
+  }, [flushPets]);
+
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flushPets();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      flushPets();
+    };
+  }, [flushPets]);
 
   if (authLoading || !user) return null;
 
@@ -271,6 +345,10 @@ export default function GardenPage() {
   const stage = getAnimalStage(streak);
   const animalEmoji = getAnimalEmoji(animal.type, streak);
   const typeName = ANIMAL_TYPES.find((t) => t.id === animal.type)?.name ?? "";
+
+  const petToday = petTodayCount(animal.pet, kstDateKey());
+  const affection = getAffectionLevel(animal.pet.total);
+  const nextAffection = nextAffectionLevel(affection);
 
   const nextStage = ANIMAL_STAGES.find((s) => s.minStreak > streak) ?? null;
   const stageRatio = nextStage ? (streak - stage.minStreak) / (nextStage.minStreak - stage.minStreak) : 1;
@@ -385,7 +463,15 @@ export default function GardenPage() {
           ) : (
             <>
               <div className="w-full">
-                <Animal3D typeId={animal.type} stage={stage} isHungry={isHungry} effectiveStreak={streak} />
+                <Animal3D
+                  typeId={animal.type}
+                  stage={stage}
+                  isHungry={isHungry}
+                  effectiveStreak={streak}
+                  petToday={petToday}
+                  petTotal={animal.pet.total}
+                  onPet={handlePet}
+                />
               </div>
               <div className="absolute right-6 sm:right-[26px] bottom-6 flex items-center gap-2">
                 <span className="w-[5px] h-[5px] rounded-full shrink-0" style={{ background: "var(--color-bloom)" }} />
@@ -411,7 +497,7 @@ export default function GardenPage() {
               />
               <div className="flex flex-col gap-3 w-full">
                 {[
-                  { label: "친밀도", ratio: Math.min(1, streak / 21), dim: false },
+                  { label: "친밀도", ratio: animal.type ? affectionRatio(animal.pet.total) : 0, dim: false },
                   { label: "기분", ratio: isHungry ? 0.35 : animal.type ? 0.95 : 0, dim: true },
                   { label: "건강", ratio: since >= 3 ? 0.2 : animal.type ? Math.max(0.4, Math.min(1, streak / 30)) : 0, dim: false },
                 ].map(({ label, ratio, dim }) => (
@@ -423,6 +509,12 @@ export default function GardenPage() {
                   </div>
                 ))}
               </div>
+              {animal.type && (
+                <p className="text-xs leading-[18px]" style={{ color: "var(--text-muted)" }}>
+                  친밀도 Lv.{affection.level} {affection.name} · 오늘 {petToday}/{PET_DAILY_CAP}번
+                  {nextAffection ? ` · 다음 단계까지 ${nextAffection.minTotal - animal.pet.total}번` : ""}
+                </p>
+              )}
               {animal.type && (
                 <button
                   onClick={() => setSelecting(true)}
