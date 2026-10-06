@@ -252,3 +252,39 @@ a {
 @media (prefers-reduced-motion: reduce) {
   html { scroll-snap-type: none; }
 }
+
+/* ── 반려 동물 방(PetRoom) 상시 움직임 ──────────────────────────
+   별 반짝임 · 구름 · 램프 깜빡임. 앱 Room.tsx의 Reanimated 진동자와 같은 주기다 (3.2 · 4.1 · 16 · 5.2초).
+   CSS 키프레임이라 rAF에 의존하지 않는다. 정지(data-still) · 동작 줄이기에서는 멈춘다.
+   ──────────────────────────────────────────────────────────── */
+@keyframes offlo-room-twinkle-a {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1; }
+}
+@keyframes offlo-room-twinkle-b {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+@keyframes offlo-room-drift {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(10px); }
+}
+@keyframes offlo-room-lamp {
+  0%, 100% { opacity: 0.94; }
+  50%      { opacity: 1; }
+}
+
+.offlo-room-stars-a { animation: offlo-room-twinkle-a 3.2s ease-in-out infinite; }
+.offlo-room-stars-b { animation: offlo-room-twinkle-b 4.1s ease-in-out -0.9s infinite; }
+.offlo-room-cloud   { animation: offlo-room-drift 16s ease-in-out infinite; }
+.offlo-room-lamp    { animation: offlo-room-lamp 5.2s ease-in-out -0.3s infinite; }
+
+.offlo-room[data-still="true"] .offlo-room-stars-a,
+.offlo-room[data-still="true"] .offlo-room-stars-b,
+.offlo-room[data-still="true"] .offlo-room-cloud,
+.offlo-room[data-still="true"] .offlo-room-lamp {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .offlo-room-stars-a, .offlo-room-stars-b, .offlo-room-cloud, .offlo-room-lamp { animation: none; }
+}

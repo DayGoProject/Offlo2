@@ -34,9 +34,12 @@ import {
   type PetRecord,
 } from "@/lib/garden-utils";
 import { kstDateKey } from "@/lib/kst";
+import { shownRecord, tapPet, type TapResult } from "@/lib/pet/affection";
+import { petCondition } from "@/lib/pet/condition";
 
-// 동물 SVG는 660줄짜리 클라이언트 전용 컴포넌트다. 식물 탭만 보는 사용자가
-// 이 코드를 받지 않도록 지연 로딩한다.
+// 동물 무대(3D 클레이 동물 + 방)와 그 폴백인 SVG 동물은 둘 다 클라이언트 전용이다. 식물 탭만 보는 사용자가
+// 이 코드(three 포함)를 받지 않도록 지연 로딩한다. SVG `Animal3D`는 동작 줄이기 · WebGL 불가 · 모델 로드 실패일 때만 쓰인다 (.claude/rules/3d.md).
+const PetStage = dynamic(() => import("@/components/garden/PetStage"), { ssr: false });
 const Animal3D = dynamic(() => import("@/components/garden/Animal3D"), { ssr: false });
 
 /* ── 타입 ─────────────────────────────────────────────────── */
@@ -222,6 +225,12 @@ export default function GardenPage() {
   const [tab, setTab] = useState<Tab>("plant");
   const [selecting, setSelecting] = useState(false);
   const [pending, setPending] = useState<(typeof ANIMAL_TYPES)[number] | null>(null);
+  // 동물 상태(알 · 배부름 · 출출 · 굶주림)와 창밖 하늘의 "지금" — 1분마다 새로 잰다 (자정을 넘기면 상태가 바뀐다)
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -307,15 +316,20 @@ export default function GardenPage() {
     }
   }, [user]);
 
-  const handlePet = useCallback(() => {
-    // 오늘 상한을 채웠으면 화면 효과만 — 기록도 서버 호출도 하지 않는다
-    const { next, accepted } = applyPetTaps(animalRef.current.pet, kstDateKey(), 1);
-    if (accepted < 1) return;
-    animalRef.current = { ...animalRef.current, pet: next };
-    setAnimal((prev) => ({ ...prev, pet: next }));
-    pendingPets.current += 1;
-    if (petTimer.current) clearTimeout(petTimer.current);
-    petTimer.current = setTimeout(flushPets, 1200);
+  /** 쓰다듬기 한 번 — 인정됐는지 · 상한에 닿았는지 · 레벨이 올랐는지를 무대에 돌려준다 (반응 말 · 안내에 쓴다) */
+  const handlePet = useCallback((): TapResult => {
+    const key = kstDateKey();
+    // 오늘 상한을 채웠으면 화면 효과만 — 기록도 서버 호출도 하지 않는다 (앱과 같은 `tapPet` 규칙)
+    const { state, result } = tapPet({ server: animalRef.current.pet, inflight: 0, pending: 0 }, key);
+    if (result.counted) {
+      const next = shownRecord(state, key);
+      animalRef.current = { ...animalRef.current, pet: next };
+      setAnimal((prev) => ({ ...prev, pet: next }));
+      pendingPets.current += 1;
+      if (petTimer.current) clearTimeout(petTimer.current);
+      petTimer.current = setTimeout(flushPets, 1200);
+    }
+    return result;
   }, [flushPets]);
 
   useEffect(() => {
@@ -341,6 +355,8 @@ export default function GardenPage() {
   const since = daysSince(animal.lastAnalysisDate);
   const hasEverAnalyzed = !!animal.lastAnalysisDate;
   const isHungry = hasEverAnalyzed && since >= 2;
+  // 3D 동물의 몸짓을 가르는 상태 — 앱과 같은 판정(KST · 출출은 하루 걸렀을 때). 스탯 바의 `isHungry`는 웹 기존 규칙(2일)을 그대로 둔다
+  const condition = petCondition({ type: animal.type, lastAnalysisDate: animal.lastAnalysisDate }, now);
   const streak = animal.type ? animal.streak : 0;
   const stage = getAnimalStage(streak);
   const animalEmoji = getAnimalEmoji(animal.type, streak);
@@ -461,25 +477,38 @@ export default function GardenPage() {
               </div>
             </div>
           ) : (
-            <>
-              <div className="w-full">
-                <Animal3D
-                  typeId={animal.type}
-                  stage={stage}
-                  isHungry={isHungry}
-                  effectiveStreak={streak}
-                  petToday={petToday}
-                  petTotal={animal.pet.total}
+            <div className="flex flex-col items-center gap-3 w-full px-3 py-4 sm:px-6 sm:py-6">
+              {/* 앱과 같은 3D 클레이 동물 + 방. 3D를 쓸 수 없으면(동작 줄이기 · WebGL 불가 · 모델 로드 실패) 기존 SVG 동물이 대신한다 */}
+              <div className="w-full max-w-[480px]">
+                <PetStage
+                  type={animal.type}
+                  streak={streak}
+                  condition={condition}
+                  totalMinutes={totalMin}
+                  now={now}
                   onPet={handlePet}
+                  renderFallback={() => (
+                    <Animal3D
+                      typeId={animal.type}
+                      stage={stage}
+                      isHungry={isHungry}
+                      effectiveStreak={streak}
+                      petToday={petToday}
+                      petTotal={animal.pet.total}
+                      onPet={() => {
+                        handlePet();
+                      }}
+                    />
+                  )}
                 />
               </div>
-              <div className="absolute right-6 sm:right-[26px] bottom-6 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <span className="w-[5px] h-[5px] rounded-full shrink-0" style={{ background: "var(--color-bloom)" }} />
                 <span className="text-xs leading-4" style={{ color: "var(--text-muted)" }}>
-                  탭하면 쓰다듬을 수 있어요
+                  톡 누르거나 쓱쓱 문질러서 쓰다듬어 보세요
                 </span>
               </div>
-            </>
+            </div>
           )}
         </section>
 
