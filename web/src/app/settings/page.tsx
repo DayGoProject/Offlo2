@@ -101,13 +101,16 @@ export default function SettingsPage() {
     setNameError("");
     setSavedMsg("");
     try {
-      await updateProfile(user, { displayName: displayName.trim() });
+      // 커뮤니티에 노출되는 이름은 서버(Supabase)에 있다 — `POST /api/users`는 이미 있는 사용자를 바꾸지 않아 이름이 갱신되지 않았다.
+      // 서버가 먼저 저장에 성공해야 클라이언트 프로필도 바꾼다 (둘이 어긋나지 않게)
       const token = await user.getIdToken();
-      await fetch("/api/users", {
-        method: "POST",
+      const res = await fetch("/api/users/me", {
+        method: "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ email: user.email ?? "", name: displayName.trim() }),
+        body: JSON.stringify({ name: displayName.trim() }),
       });
+      if (!res.ok) throw new Error(`name save failed: ${res.status}`);
+      await updateProfile(user, { displayName: displayName.trim() });
       setSavedMsg("이름이 저장됐습니다.");
     } catch {
       setNameError("저장 중 오류가 발생했습니다. 다시 시도해주세요.");
