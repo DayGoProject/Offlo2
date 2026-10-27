@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  updateProfile,
-  updatePassword,
-  reauthenticateWithCredential,
-  EmailAuthProvider,
-  deleteUser,
-} from "firebase/auth";
+import { updateProfile } from "firebase/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { logout } from "@/services/auth";
 import AppShell from "@/components/app/AppShell";
@@ -60,17 +54,8 @@ export default function SettingsPage() {
   const [nameError, setNameError] = useState("");
   const [plan, setPlan] = useState("무료");
 
-  /* 비밀번호 변경 상태 */
-  const [currentPw, setCurrentPw] = useState("");
-  const [newPw, setNewPw] = useState("");
-  const [confirmPw, setConfirmPw] = useState("");
-  const [pwSaving, setPwSaving] = useState(false);
-  const [pwMsg, setPwMsg] = useState("");
-  const [pwError, setPwError] = useState("");
-
   /* 회원 탈퇴 상태 */
   const [deleteConfirm, setDeleteConfirm] = useState("");
-  const [deleteReauth, setDeleteReauth] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
@@ -92,7 +77,6 @@ export default function SettingsPage() {
 
   const initials = (user.displayName ?? user.email ?? "?").charAt(0).toUpperCase();
   const isGoogle = user.providerData.some((p) => p.providerId === "google.com");
-  const isEmailUser = user.providerData.some((p) => p.providerId === "password");
   const nameDirty = !!displayName.trim() && displayName.trim() !== user.displayName;
 
   async function handleSaveName() {
@@ -119,58 +103,20 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleChangePw(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user?.email) return;
-    setPwError("");
-    setPwMsg("");
-    if (newPw.length < 8) return setPwError("새 비밀번호는 8자 이상이어야 합니다.");
-    if (newPw !== confirmPw) return setPwError("새 비밀번호가 일치하지 않습니다.");
-
-    setPwSaving(true);
-    try {
-      const cred = EmailAuthProvider.credential(user.email, currentPw);
-      await reauthenticateWithCredential(user, cred);
-      await updatePassword(user, newPw);
-      setPwMsg("비밀번호가 변경됐습니다.");
-      setCurrentPw("");
-      setNewPw("");
-      setConfirmPw("");
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
-      setPwError(
-        code === "auth/wrong-password" || code === "auth/invalid-credential"
-          ? "현재 비밀번호가 올바르지 않습니다."
-          : "비밀번호 변경 중 오류가 발생했습니다.",
-      );
-    } finally {
-      setPwSaving(false);
-    }
-  }
-
   async function handleDeleteAccount() {
     if (!user || deleteConfirm.trim() !== DELETE_PHRASE) return;
     setDeleting(true);
     setDeleteError("");
     try {
-      /* 이메일 유저는 재인증 필요 */
-      if (isEmailUser && user.email) {
-        const cred = EmailAuthProvider.credential(user.email, deleteReauth);
-        await reauthenticateWithCredential(user, cred);
-      }
-      /* Supabase + Firestore 삭제 */
+      /* 서버가 Supabase + Firestore(users/{uid} 전체) + Firebase Auth 계정까지 지운다 — 실패하면 아무것도 지운 것으로 치지 않는다 */
       const token = await user.getIdToken();
-      await fetch("/api/users/me", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-      /* Firebase Auth 삭제 */
-      await deleteUser(user);
+      const res = await fetch("/api/users/me", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error(`delete failed: ${res.status}`);
+      /* 계정이 서버에서 이미 지워졌다 — 이 브라우저의 로그인 상태만 정리한다 */
+      await logout().catch(() => {});
       router.replace("/");
-    } catch (err: unknown) {
-      const code = (err as { code?: string }).code;
-      setDeleteError(
-        code === "auth/wrong-password" || code === "auth/invalid-credential"
-          ? "비밀번호가 올바르지 않습니다."
-          : "계정 삭제 중 오류가 발생했습니다. 다시 시도해주세요.",
-      );
+    } catch {
+      setDeleteError("계정 삭제 중 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setDeleting(false);
     }
@@ -243,38 +189,10 @@ export default function SettingsPage() {
             <OkNote>{savedMsg}</OkNote>
           </Panel>
 
-          <Panel title="비밀번호 변경">
-            {isEmailUser ? (
-              <form onSubmit={handleChangePw} className="flex flex-col gap-3">
-                {[
-                  { label: "현재 비밀번호", val: currentPw, set: setCurrentPw, ph: "현재 비밀번호를 입력하세요" },
-                  { label: "새 비밀번호", val: newPw, set: setNewPw, ph: "새 비밀번호를 입력하세요 (8자 이상)" },
-                  { label: "새 비밀번호 확인", val: confirmPw, set: setConfirmPw, ph: "새 비밀번호를 한 번 더 입력하세요" },
-                ].map(({ label, val, set, ph }) => (
-                  <input
-                    key={label}
-                    type="password"
-                    aria-label={label}
-                    value={val}
-                    onChange={(e) => set(e.target.value)}
-                    placeholder={ph}
-                    className={fieldClass}
-                    style={fieldStyle}
-                  />
-                ))}
-
-                <ErrorNote>{pwError}</ErrorNote>
-                <OkNote>{pwMsg}</OkNote>
-
-                <Pill type="submit" variant="accent" disabled={pwSaving || !currentPw || !newPw || !confirmPw}>
-                  {pwSaving ? "변경 중…" : "비밀번호 변경"}
-                </Pill>
-              </form>
-            ) : (
-              <p className="text-[13px] leading-[21px]" style={{ color: "var(--text-muted)" }}>
-                Google 계정으로 가입해 비밀번호 변경이 필요 없습니다. 로그인 보안은 Google 계정 설정에서 관리하세요.
-              </p>
-            )}
+          <Panel title="로그인 보안">
+            <p className="text-[13px] leading-[21px]" style={{ color: "var(--text-muted)" }}>
+              Offlo는 Google 계정으로만 로그인해요. 비밀번호는 Offlo가 받지 않으니 로그인 보안은 Google 계정 설정에서 관리하세요.
+            </p>
           </Panel>
         </div>
 
@@ -316,20 +234,8 @@ export default function SettingsPage() {
                 회원 탈퇴
               </p>
               <p className="text-xs leading-[19px]" style={{ color: "var(--text-muted)" }}>
-                분석 기록·목표·배지·반려 정원이 모두 삭제되며 복구할 수 없습니다.
+                분석 기록·목표·배지·반려 정원·알림·커뮤니티 글과 댓글이 모두 삭제되며 복구할 수 없습니다.
               </p>
-
-              {isEmailUser && (
-                <input
-                  type="password"
-                  aria-label="현재 비밀번호 확인"
-                  value={deleteReauth}
-                  onChange={(e) => setDeleteReauth(e.target.value)}
-                  placeholder="현재 비밀번호를 입력하세요"
-                  className="w-full h-[38px] px-3.5 rounded-lg text-xs outline-none"
-                  style={{ background: "var(--bg-nav)", border: "1px solid var(--border-card)", color: "var(--text-primary)" }}
-                />
-              )}
 
               <input
                 type="text"
@@ -349,7 +255,7 @@ export default function SettingsPage() {
 
               <button
                 onClick={handleDeleteAccount}
-                disabled={deleting || deleteConfirm.trim() !== DELETE_PHRASE || (isEmailUser && !deleteReauth)}
+                disabled={deleting || deleteConfirm.trim() !== DELETE_PHRASE}
                 className="w-full h-[38px] rounded-full text-xs font-semibold transition-opacity hover:opacity-85 disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
                 style={{ background: "var(--danger)", color: "#FFFFFF" }}
               >
@@ -364,7 +270,8 @@ export default function SettingsPage() {
                 { label: "버전", value: "1.0.0", num: true },
                 { label: "플랜", value: plan, num: false },
                 { label: "확장 프로그램", value: "Chrome 웹 스토어 준비 중", num: false },
-              ].map(({ label, value, num }) => (
+                { label: "개인정보 처리방침", value: "보기", num: false, href: "/privacy" },
+              ].map(({ label, value, num, href }) => (
                 <div key={label} className="flex items-center justify-between gap-3 w-full">
                   <span className="text-[13px] leading-4 shrink-0" style={{ color: "var(--text-muted)" }}>
                     {label}
@@ -373,7 +280,13 @@ export default function SettingsPage() {
                     className={`text-[13px] leading-4 text-right ${num ? "num" : ""}`}
                     style={{ color: "var(--text-primary)", letterSpacing: num ? 0 : undefined }}
                   >
-                    {value}
+                    {href ? (
+                      <a href={href} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--color-bloom)" }}>
+                        {value}
+                      </a>
+                    ) : (
+                      value
+                    )}
                   </span>
                 </div>
               ))}

@@ -3,30 +3,26 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getAdditionalUserInfo } from "firebase/auth";
-import { signInWithGoogle, signInWithEmail, logout, getAuthErrorMessage, getFirebaseErrorCode } from "@/services/auth";
+import { signInWithGoogle, logout, getAuthErrorMessage, getFirebaseErrorCode } from "@/services/auth";
 import GoogleIcon from "@/components/icons/GoogleIcon";
 
+/**
+ * 로그인 — **Google 단독.** 이메일 · 비밀번호 로그인과 회원가입은 없다 (앱과 같은 방침).
+ * 처음 로그인하는 Google 계정은 그 자리에서 가입된다: 서버가 uid 기준으로 프로필을 만들고(`POST /api/users` — 이미 있으면 그대로), 실패하면 로그인도 되돌린다
+ * (서버 프로필 없이 들어가면 이후 모든 API가 깨진 채로 보인다).
+ */
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [emailLoading, setEmailLoading] = useState(false);
 
   async function handleGoogleLogin() {
     setError("");
     setGoogleLoading(true);
     try {
       const result = await signInWithGoogle();
-      if (getAdditionalUserInfo(result)?.isNewUser) {
-        await result.user.delete();
-        setError(getAuthErrorMessage("no-account"));
-        return;
-      }
       const token = await result.user.getIdToken();
-      await fetch("/api/users", {
+      const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -34,6 +30,11 @@ export default function LoginPage() {
           name: result.user.displayName ?? result.user.email ?? "",
         }),
       });
+      if (!res.ok) {
+        await logout();
+        setError("계정을 준비하지 못했습니다. 잠시 후 다시 시도해주세요.");
+        return;
+      }
       router.push("/");
     } catch (err: unknown) {
       const code = getFirebaseErrorCode(err);
@@ -42,34 +43,6 @@ export default function LoginPage() {
       setError(getAuthErrorMessage(code));
     } finally {
       setGoogleLoading(false);
-    }
-  }
-
-  async function handleEmailLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setEmailLoading(true);
-    try {
-      const credential = await signInWithEmail(email, password);
-      if (!credential.user.emailVerified) {
-        await logout();
-        setError("이메일 인증이 완료되지 않았습니다. 받은 편지함을 확인해주세요.");
-        return;
-      }
-      const token = await credential.user.getIdToken();
-      await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          email: credential.user.email ?? email,
-          name: credential.user.displayName ?? email,
-        }),
-      });
-      router.push("/");
-    } catch (err: unknown) {
-      setError(getAuthErrorMessage(getFirebaseErrorCode(err)));
-    } finally {
-      setEmailLoading(false);
     }
   }
 
@@ -91,9 +64,9 @@ export default function LoginPage() {
         </Link>
 
         <h1 className="text-center text-2xl font-extrabold tracking-tight mb-1.5 text-chalk">
-          로그인
+          시작하기
         </h1>
-        <p className="text-center text-sm text-chalk/50 mb-7">계속하려면 로그인해주세요</p>
+        <p className="text-center text-sm text-chalk/50 mb-7">Google 계정으로 로그인하면 바로 시작돼요. 처음이면 계정이 만들어져요.</p>
 
         {/* Google */}
         <button
@@ -106,66 +79,14 @@ export default function LoginPage() {
           {googleLoading ? "로그인 중..." : "Google로 계속하기"}
         </button>
 
-        {/* 구분선 */}
-        <div className="flex items-center gap-3 my-5">
-          <div className="flex-1 h-px bg-chalk/[0.1]" />
-          <span className="text-xs text-chalk/40 whitespace-nowrap">또는</span>
-          <div className="flex-1 h-px bg-chalk/[0.1]" />
-        </div>
+        {error && (
+          <p className="text-[0.8125rem] text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg px-3.5 py-2.5 mt-5" role="alert">
+            {error}
+          </p>
+        )}
 
-        {/* 이메일 폼 */}
-        <form className="flex flex-col gap-4" onSubmit={handleEmailLogin}>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[0.8125rem] font-medium text-chalk/70" htmlFor="email">
-              이메일
-            </label>
-            <input
-              id="email"
-              className="bg-chalk/[0.06] border border-chalk/[0.1] rounded-xl px-4 py-3 text-sm text-chalk outline-none focus:border-brand transition-colors w-full placeholder:text-chalk/35"
-              type="email"
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[0.8125rem] font-medium text-chalk/70" htmlFor="password">
-              비밀번호
-            </label>
-            <input
-              id="password"
-              className="bg-chalk/[0.06] border border-chalk/[0.1] rounded-xl px-4 py-3 text-sm text-chalk outline-none focus:border-brand transition-colors w-full placeholder:text-chalk/35"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {error && (
-            <p className="text-[0.8125rem] text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg px-3.5 py-2.5">
-              {error}
-            </p>
-          )}
-
-          <button
-            className="w-full bg-brand text-[#040508] text-sm font-bold py-3.5 rounded-full border-none cursor-pointer hover:opacity-90 transition-opacity mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
-            type="submit"
-            disabled={emailLoading}
-          >
-            {emailLoading ? "로그인 중..." : "로그인"}
-          </button>
-        </form>
-
-        <p className="text-center text-sm text-chalk/50 mt-6">
-          계정이 없으신가요?{" "}
-          <Link href="/signup" className="text-brand font-semibold hover:underline">
-            회원가입
-          </Link>
+        <p className="text-center text-xs text-chalk/40 mt-7 leading-relaxed">
+          계속하면 <Link href="/privacy" className="text-chalk/60 underline hover:text-chalk">개인정보 처리방침</Link>을 읽고 동의한 것으로 봐요.
         </p>
       </div>
     </div>

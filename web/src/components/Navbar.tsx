@@ -160,7 +160,7 @@ export default function Navbar() {
                 로그인
               </Link>
               <Link
-                href="/signup"
+                href="/login"
                 className="bg-brand text-[#040508] text-sm font-bold px-4 py-2 rounded-full hover:opacity-90 transition-opacity"
               >
                 시작하기

@@ -14,7 +14,8 @@ import { useAuth } from '@/hooks/useAuth'
 
 export default function LandingPage() {
   const { user } = useAuth()
-  const ctaHref = user ? '/dashboard' : '/signup'
+  // 가입 페이지는 없다 — Google로 처음 로그인하면 그 자리에서 가입된다
+  const ctaHref = user ? '/dashboard' : '/login'
 
   return (
     <>
