@@ -62,11 +62,10 @@ export async function DELETE(req: Request): Promise<Response> {
     /* 1. Supabase 유저 + 연관 데이터 삭제 (cascade) */
     await prisma.user.deleteMany({ where: { uid } });
 
-    /* 2. Firestore garden 데이터 삭제 */
+    /* 2. Firestore — users/{uid} 아래 **모든 것**을 하위 컬렉션째 삭제한다 (garden · notifications · aiUsage …).
+          예전에는 garden만 지워서 알림(제목 · 본문)과 AI 사용 기록이 탈퇴 뒤에도 남았다 — 개인정보 처리방침의 "탈퇴하면 모두 삭제"와 맞지 않았다 (M9). */
     const db = getAdminFirestore();
-    const gardenRef = db.collection(`users/${uid}/garden`);
-    const docs = await gardenRef.listDocuments();
-    await Promise.all(docs.map((d) => d.delete()));
+    await db.recursiveDelete(db.doc(`users/${uid}`));
 
     /* 3. Firebase Auth 계정 삭제 */
     await admin.auth().deleteUser(uid);

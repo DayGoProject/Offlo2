@@ -1,6 +1,7 @@
 import { verifyIdToken, handleApiError, apiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
 import { assertWeeklyAnalysisAvailable } from "@/lib/analysis-limits";
+import { consumeAiCall } from "@/lib/ai-usage";
 import { buildWeeklyPrompt, getGeminiModel, parseGeminiJson, type DailySummary } from "@/lib/ai";
 
 export const runtime = "nodejs";
@@ -48,6 +49,8 @@ export async function POST(req: Request) {
     const user = await prisma.user.findUnique({ where: { uid }, select: { id: true } });
     if (!user) throw apiError("사용자를 찾을 수 없습니다.", 404);
     await assertWeeklyAnalysisAvailable(user.id);
+    // 저장하지 않고 AI만 반복 호출하는 길을 막는다 — 하루 호출 상한 (lib/ai-usage.ts)
+    await consumeAiCall(uid, "weekly");
 
     const model = getGeminiModel();
     const result = await model.generateContent([

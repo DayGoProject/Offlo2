@@ -1,4 +1,5 @@
 import { verifyIdToken, handleApiError, apiError } from "@/lib/firebase-admin";
+import { consumeAiCall } from "@/lib/ai-usage";
 import {
   assertInlineImage,
   buildChatSystemPrompt,
@@ -20,7 +21,7 @@ const MAX_MESSAGE_LENGTH = 2000;
  */
 export async function POST(req: Request) {
   try {
-    await verifyIdToken(req);
+    const uid = await verifyIdToken(req);
 
     const { analysisId, messages, analysisContext } = (await req.json()) as {
       analysisId: unknown;
@@ -61,6 +62,9 @@ export async function POST(req: Request) {
     // Gemini history는 반드시 user role부터 시작해야 함
     const firstUserIdx = history.findIndex((m) => m.role === "user");
     const cleanHistory = firstUserIdx >= 0 ? history.slice(firstUserIdx) : [];
+
+    // 채팅에는 횟수 제한이 없어 토큰 하나로 Gemini를 끝없이 부를 수 있었다 — 하루 호출 상한 (lib/ai-usage.ts)
+    await consumeAiCall(uid, "chat");
 
     const model = getGeminiModel(buildChatSystemPrompt(ctx));
     const chat = model.startChat({

@@ -1,6 +1,7 @@
 import { verifyIdToken, apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
 import { assertDailyAnalysisAvailable } from "@/lib/analysis-limits";
+import { consumeAiCall } from "@/lib/ai-usage";
 import {
   DAILY_ANALYSIS_PROMPT,
   assertInlineImage,
@@ -35,6 +36,8 @@ export async function POST(req: Request) {
     const user = await prisma.user.findUnique({ where: { uid }, select: { id: true } });
     if (!user) throw apiError("사용자를 찾을 수 없습니다.", 404);
     await assertDailyAnalysisAvailable(user.id);
+    // 저장하지 않고 AI만 반복 호출하는 길을 막는다 — 하루 호출 상한 (lib/ai-usage.ts)
+    await consumeAiCall(uid, "analyze");
 
     const model = getGeminiModel();
     const result = await model.generateContent([
