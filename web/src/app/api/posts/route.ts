@@ -1,5 +1,6 @@
 import { apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
+import { loadViewerFilters } from "@/lib/moderation";
 import {
   requireUser, requireText, parseLimit,
   MAX_POST_LENGTH, POST_TYPES, type PostType,
@@ -9,14 +10,22 @@ import {
 
 export async function GET(req: Request): Promise<Response> {
   try {
-    const { userId } = await requireUser(req);
+    const { uid, userId } = await requireUser(req);
 
     const url = new URL(req.url);
     const limit = parseLimit(url);
     const cursor = url.searchParams.get("cursor");
 
+    // 내가 차단한 사용자 · 내가 신고한 글 · 신고가 모여 숨겨진 글(작성자 본인에게는 보인다)을 쿼리에서 뺀다 — 페이지가 비지 않고 커서도 그대로 이어진다 (M9)
+    const hide = await loadViewerFilters(uid);
+
     // limit + 1개를 읽어 다음 페이지 존재 여부를 판단한다
     const rows = await prisma.post.findMany({
+      where: {
+        userId: { notIn: hide.excludeUserIds },
+        id: { notIn: hide.reportedPostIds },
+        OR: [{ id: { notIn: hide.hiddenPostIds } }, { userId }],
+      },
       take: limit + 1,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       // id를 2차 정렬 키로 둬야 createdAt이 같은 글에서도 커서가 안정적이다

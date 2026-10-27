@@ -1,5 +1,6 @@
 import { handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
+import { loadViewerFilters } from "@/lib/moderation";
 import { requireUser } from "@/lib/social";
 
 /* ── GET /api/ranking — 주간 디톡스 랭킹 ───────────────────── */
@@ -12,7 +13,10 @@ const TOP_N = 10;
 
 export async function GET(req: Request): Promise<Response> {
   try {
-    const { userId } = await requireUser(req);
+    const { uid, userId } = await requireUser(req);
+
+    // 내가 차단한 사용자는 내 랭킹에서 뺀다 (순위는 남은 사람끼리 다시 센다) (M9)
+    const blocked = new Set((await loadViewerFilters(uid)).excludeUserIds);
 
     const since = new Date(Date.now() - RANKING_DAYS * 24 * 60 * 60 * 1000);
 
@@ -24,7 +28,7 @@ export async function GET(req: Request): Promise<Response> {
     });
 
     const ranked = grouped
-      .filter((g) => g._count._all >= MIN_ANALYSES)
+      .filter((g) => g._count._all >= MIN_ANALYSES && !blocked.has(g.userId))
       .map((g) => ({
         userId: g.userId,
         avgScore: Math.round(g._avg.detoxScore ?? 0),

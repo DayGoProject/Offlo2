@@ -1,6 +1,7 @@
 import * as admin from "firebase-admin";
 import { verifyIdToken, apiError, handleApiError, getAdminFirestore } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
+import { deleteReportsBy } from "@/lib/moderation";
 
 /* ── GET /api/users/me — 내 프로필 조회 ────────────────────── */
 
@@ -66,6 +67,8 @@ export async function DELETE(req: Request): Promise<Response> {
           예전에는 garden만 지워서 알림(제목 · 본문)과 AI 사용 기록이 탈퇴 뒤에도 남았다 — 개인정보 처리방침의 "탈퇴하면 모두 삭제"와 맞지 않았다 (M9). */
     const db = getAdminFirestore();
     await db.recursiveDelete(db.doc(`users/${uid}`));
+    /* 이 사람이 한 신고 원본도 지운다 (차단 · 내가 신고한 목록은 위 users/{uid} 아래라 이미 지워졌다) */
+    await deleteReportsBy(uid);
 
     /* 3. Firebase Auth 계정 삭제 */
     await admin.auth().deleteUser(uid);

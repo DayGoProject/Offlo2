@@ -1,5 +1,6 @@
 import { apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
+import { loadViewerFilters } from "@/lib/moderation";
 import { notifyPostComment } from "@/lib/notifications";
 import { requireUser, requireId, requireText, MAX_COMMENT_LENGTH } from "@/lib/social";
 
@@ -10,11 +11,19 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   try {
-    const { userId } = await requireUser(req);
+    const { uid, userId } = await requireUser(req);
     const postId = requireId((await params).id, "게시글");
 
+    // 내가 차단한 사용자 · 내가 신고한 댓글 · 신고가 모여 숨겨진 댓글(작성자 본인에게는 보인다)을 뺀다 (M9)
+    const hide = await loadViewerFilters(uid);
+
     const comments = await prisma.comment.findMany({
-      where: { postId },
+      where: {
+        postId,
+        userId: { notIn: hide.excludeUserIds },
+        id: { notIn: hide.reportedCommentIds },
+        OR: [{ id: { notIn: hide.hiddenCommentIds } }, { userId }],
+      },
       orderBy: { createdAt: "asc" },
       take: 100,
       select: {
