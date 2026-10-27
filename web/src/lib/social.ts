@@ -1,5 +1,6 @@
 import { verifyIdToken, apiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
+import { assertCanWrite } from "@/lib/sanctions";
 
 /* ── 소셜·커뮤니티 공용 유틸 (11단계) ──────────────────────────
    API Routes 전용. 클라이언트에서 import 금지 (firebase-admin 의존).
@@ -18,10 +19,20 @@ export async function requireUser(req: Request) {
   const uid = await verifyIdToken(req);
   const user = await prisma.user.findUnique({
     where: { uid },
-    select: { id: true, name: true },
+    select: { id: true, name: true, email: true },
   });
   if (!user) throw apiError("사용자를 찾을 수 없습니다.", 404);
-  return { uid, userId: user.id, name: user.name };
+  return { uid, userId: user.id, name: user.name, email: user.email };
+}
+
+/**
+ * 글 · 댓글 · 좋아요처럼 **커뮤니티에 쓰는** 라우트용 — `requireUser` + 제재 확인 (M9).
+ * 커뮤니티 이용 정지 · 계정 정지 중이면 403(한국어 안내 + 끝나는 날). 읽기 · 내 글 삭제 · 신고 · 차단은 정지 중에도 된다.
+ */
+export async function requireWriter(req: Request) {
+  const user = await requireUser(req);
+  await assertCanWrite(user.email);
+  return user;
 }
 
 /** 본문 텍스트 검증 — 공백만 있는 값은 거부하고 trim한 문자열을 반환. */

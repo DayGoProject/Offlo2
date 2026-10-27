@@ -38,7 +38,7 @@ export function getAuthErrorMessage(code: string): string {
     case "auth/too-many-requests":
       return "시도 횟수가 많아 일시적으로 차단되었습니다. 잠시 후 다시 시도해주세요.";
     case "auth/user-disabled":
-      return "사용이 중지된 계정입니다.";
+      return "이용이 정지된 계정입니다. 문의는 개인정보 처리방침에 적힌 이메일로 보내주세요.";
 
     default:
       // 알 수 없는 코드는 그대로 노출한다 — 없으면 운영 중 원인 파악이 불가능하다

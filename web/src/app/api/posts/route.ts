@@ -2,7 +2,7 @@ import { apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
 import { loadViewerFilters } from "@/lib/moderation";
 import {
-  requireUser, requireText, parseLimit,
+  requireUser, requireWriter, requireText, parseLimit,
   MAX_POST_LENGTH, POST_TYPES, type PostType,
 } from "@/lib/social";
 
@@ -66,7 +66,7 @@ export async function GET(req: Request): Promise<Response> {
 
 export async function POST(req: Request): Promise<Response> {
   try {
-    const { userId } = await requireUser(req);
+    const { userId } = await requireWriter(req); // 커뮤니티 정지 · 계정 정지면 403
 
     const body = await req.json().catch(() => {
       throw apiError("요청 본문이 올바르지 않습니다.", 400);

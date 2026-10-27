@@ -17,6 +17,11 @@ export function getAdminFirestore(): admin.firestore.Firestore {
   return getAdminApp().firestore();
 }
 
+/** 계정 정지(Firebase Auth 비활성화 · 토큰 무효화)에 쓴다 — 관리자 처리 코드 전용 */
+export function getAdminAuth(): admin.auth.Auth {
+  return getAdminApp().auth();
+}
+
 /* ── Firebase ID Token 검증 → uid 반환 ─────────────────────── */
 
 /**

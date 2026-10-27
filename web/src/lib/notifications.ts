@@ -11,7 +11,8 @@ export type NotificationType =
   | "goal_deadline"
   | "pet_hungry"
   | "daily_reminder"
-  | "post_comment";
+  | "post_comment"
+  | "moderation"; // 운영 정책 안내 · 커뮤니티 이용 정지 (M9 — 관리자 처리)
 
 export interface NotificationInput {
   type: NotificationType;

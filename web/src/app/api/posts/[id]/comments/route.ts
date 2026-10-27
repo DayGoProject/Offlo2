@@ -2,7 +2,7 @@ import { apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
 import { loadViewerFilters } from "@/lib/moderation";
 import { notifyPostComment } from "@/lib/notifications";
-import { requireUser, requireId, requireText, MAX_COMMENT_LENGTH } from "@/lib/social";
+import { requireUser, requireWriter, requireId, requireText, MAX_COMMENT_LENGTH } from "@/lib/social";
 
 /* ── GET /api/posts/[id]/comments — 댓글 목록 (오래된 순) ──── */
 
@@ -53,7 +53,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   try {
-    const { userId, name } = await requireUser(req);
+    const { userId, name } = await requireWriter(req); // 커뮤니티 정지 · 계정 정지면 403
     const postId = requireId((await params).id, "게시글");
 
     const body = await req.json().catch(() => {

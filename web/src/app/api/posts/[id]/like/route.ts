@@ -1,6 +1,6 @@
 import { apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
-import { requireUser, requireId } from "@/lib/social";
+import { requireWriter, requireId } from "@/lib/social";
 
 /* ── POST /api/posts/[id]/like — 좋아요 토글 ───────────────── */
 // 좋아요 행 생성/삭제와 likeCount 증감을 한 트랜잭션으로 묶는다.
@@ -11,7 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<Response> {
   try {
-    const { userId } = await requireUser(req);
+    const { userId } = await requireWriter(req); // 커뮤니티 정지 · 계정 정지면 403
     const postId = requireId((await params).id, "게시글");
 
     const post = await prisma.post.findUnique({ where: { id: postId }, select: { id: true } });

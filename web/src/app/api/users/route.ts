@@ -1,5 +1,6 @@
-import { verifyIdToken, apiError, handleApiError } from "@/lib/firebase-admin";
+import { verifyIdTokenFull, apiError, handleApiError } from "@/lib/firebase-admin";
 import { prisma } from "@/lib/prisma";
+import { assertNotBanned } from "@/lib/sanctions";
 
 /* ── POST /api/users — Supabase에 유저 생성 (Google로 **처음 로그인하는 순간** 앱 · 웹 로그인 화면이 부른다 — 가입 페이지는 없다) ── */
 
@@ -10,7 +11,8 @@ const isUniqueViolation = (e: unknown): boolean => typeof e === "object" && e !=
 
 export async function POST(req: Request): Promise<Response> {
   try {
-    const uid = await verifyIdToken(req);
+    const decoded = await verifyIdTokenFull(req);
+    const uid = decoded.uid;
 
     const body = await req.json().catch(() => {
       throw apiError("요청 본문이 올바르지 않습니다.", 400);
@@ -24,6 +26,11 @@ export async function POST(req: Request): Promise<Response> {
     if (typeof name !== "string" || name.trim().length === 0 || name.length > 100) {
       throw apiError("이름은 1~100자여야 합니다.", 400);
     }
+
+    // 영구 정지된 이메일은 새 계정을 만들 수 없다 — 정지 기록은 탈퇴로 지워지지 않는다 (`lib/sanctions.ts`).
+    // 요청 본문의 이메일은 바꿀 수 있으니 **검증된 토큰의 이메일**도 같이 본다
+    await assertNotBanned(decoded.email);
+    await assertNotBanned(email);
 
     // uid가 일치하는 경우에만 생성 — 타인 계정을 uid 조작으로 생성하는 것을 방지
     try {
