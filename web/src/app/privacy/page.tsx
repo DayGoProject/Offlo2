@@ -15,8 +15,8 @@ export const metadata: Metadata = {
  * 서버가 데이터를 더 모으거나 보관 방식이 바뀌면 이 문서를 먼저 고친다.
  */
 
-/** 개인정보 문의 · 삭제 요청을 받을 이메일 — **배포 전에 반드시 채운다.** 비어 있으면 화면에 눈에 띄는 경고가 뜬다 */
-const CONTACT_EMAIL = "";
+/** 개인정보 문의 · 삭제 요청을 받을 이메일 — 비어 있으면 화면에 눈에 띄는 경고가 뜬다 (비워 둔 채 배포하지 않는다) */
+const CONTACT_EMAIL = "jdongel2002@gmail.com";
 /** 시행일 — 배포하는 날로 맞춘다 */
 const EFFECTIVE_DATE = "2026년 10월 27일";
 
