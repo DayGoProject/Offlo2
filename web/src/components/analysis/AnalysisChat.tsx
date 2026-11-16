@@ -13,6 +13,10 @@ interface ChatMessage {
   imagePreview?: string; // 로컬 프리뷰용 (UI only)
 }
 
+/** 서버 `/api/ai/chat` 상한 — 넘으면 400이라 대화가 막힌다 (앱 `logic/chat.ts`와 같다) */
+const MAX_MESSAGES = 50;
+const MAX_MESSAGE_LENGTH = 2000;
+
 /**
  * 분석 결과 기반 AI 코치 채팅.
  *
@@ -112,10 +116,14 @@ export default function AnalysisChat({
     try {
       // imagePreview는 UI 전용이라 제외하고, 이미지 데이터는 마지막 메시지에만 남긴다
       // (히스토리에 계속 실어 보내면 요청 본문이 누적되어 상한을 넘는다)
-      const payload = updatedMessages.map((msg, i) => {
+      // 서버는 메시지 50개 · 한 메시지 2,000자를 넘으면 400이다 — 대화가 길어지면 오래된 것부터 빼고,
+      // 코치의 긴 답은 잘라 보낸다 (화면의 대화는 그대로 둔다). 예전엔 51번째 · 긴 답 다음 질문부터 계속 막혔다
+      const recent = updatedMessages.slice(-MAX_MESSAGES);
+      const payload = recent.map((msg, i) => {
         const { imagePreview: _preview, imageBase64, mimeType, ...rest } = msg;
-        const isLast = i === updatedMessages.length - 1;
-        return isLast && imageBase64 ? { ...rest, imageBase64, mimeType } : rest;
+        const trimmed = { ...rest, text: rest.text.slice(0, MAX_MESSAGE_LENGTH) };
+        const isLast = i === recent.length - 1;
+        return isLast && imageBase64 ? { ...trimmed, imageBase64, mimeType } : trimmed;
       });
       const { reply } = await chatWithAnalysis({ analysisId, messages: payload, analysisContext });
 
@@ -267,6 +275,7 @@ export default function AnalysisChat({
           placeholder="분석 결과에 대해 무엇이든 물어보세요"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          maxLength={MAX_MESSAGE_LENGTH}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();

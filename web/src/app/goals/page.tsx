@@ -7,8 +7,20 @@ import AppShell from "@/components/app/AppShell";
 import PageHeader, { Pill } from "@/components/app/PageHeader";
 import Modal from "@/components/app/Modal";
 import Field, { ErrorNote, inputClass, inputStyle } from "@/components/app/Field";
-import { fmt, fmtDate } from "@/lib/format";
-import { kstDateKey, DAY_MS } from "@/lib/kst";
+import { fmt } from "@/lib/format";
+import {
+  defaultGoalForm,
+  fmtDateKey,
+  formFromGoal,
+  goalDateKey,
+  goalNote,
+  goalSpan,
+  patchFromForm,
+  validateGoalForm,
+  GOAL_MINUTES_MAX,
+  GOAL_TITLE_MAX,
+  type GoalForm,
+} from "@/lib/goals";
 
 /* ── 타입 ──────────────────────────────────────────────────────── */
 
@@ -24,20 +36,7 @@ interface Goal {
 
 const PRESETS = [30, 60, 90, 120, 180];
 
-/* ── 유틸 ──────────────────────────────────────────────────────── */
-
-/** 기간 대비 경과일. 달성률이 아니라 '진행률'이다 — 실제 달성 여부는
- *  일간 분석이 쌓여야 알 수 있고, 목표 완료는 사용자가 직접 처리한다. */
-function progress(g: Goal): { done: number; total: number; left: number; pct: number } {
-  const day = 86400000;
-  const start = new Date(g.startDate).setHours(0, 0, 0, 0);
-  const end = new Date(g.endDate).setHours(0, 0, 0, 0);
-  const today = new Date().setHours(0, 0, 0, 0);
-
-  const total = Math.max(1, Math.round((end - start) / day) + 1);
-  const done = Math.max(0, Math.min(total, Math.round((today - start) / day) + 1));
-  return { done, total, left: total - done, pct: Math.round((done / total) * 100) };
-}
+/* 진행률 · 날짜 계산은 `lib/goals.ts` (KST 날짜 키 · 앱과 같은 규칙) */
 
 /* ── 진행 중 목표 행 ───────────────────────────────────────────── */
 
@@ -45,13 +44,17 @@ function ActiveGoal({
   goal,
   onComplete,
   onDelete,
+  onEdit,
 }: {
   goal: Goal;
   onComplete: (id: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (goal: Goal) => void;
 }) {
-  const { done, total, left, pct } = progress(goal);
-  const expired = left <= 0;
+  const span = goalSpan(goal);
+  const { pct, expired } = span;
+  // 시작 전 · 끝난 목표는 초록으로 재촉하지 않는다
+  const quiet = expired || span.startsIn > 0;
 
   return (
     <div
@@ -71,11 +74,11 @@ function ActiveGoal({
         </h3>
         <p className="text-xs leading-4" style={{ color: "var(--text-muted)" }}>
           <span className="num" style={{ letterSpacing: 0 }}>
-            {fmtDate(goal.startDate)}
+            {fmtDateKey(goalDateKey(goal.startDate))}
           </span>
           {" — "}
           <span className="num" style={{ letterSpacing: 0 }}>
-            {fmtDate(goal.endDate)}
+            {fmtDateKey(goalDateKey(goal.endDate))}
           </span>
           {" · 하루 "}
           {fmt(goal.targetMinutes)} 이하
@@ -96,9 +99,9 @@ function ActiveGoal({
         </div>
         <p
           className="text-xs leading-4"
-          style={{ color: expired ? "var(--text-muted)" : "var(--color-bloom)" }}
+          style={{ color: quiet ? "var(--text-muted)" : "var(--color-bloom)" }}
         >
-          {total}일 중 {done}일 지남 · {expired ? "기간이 끝났어요" : `${left}일 남음`}
+          {goalNote(span)}
         </p>
       </div>
 
@@ -109,6 +112,13 @@ function ActiveGoal({
           style={{ border: "1px solid var(--border-strong)", color: "var(--text-muted)" }}
         >
           삭제
+        </button>
+        <button
+          onClick={() => onEdit(goal)}
+          className="flex items-center h-[34px] px-4 rounded-full text-xs font-medium transition-opacity hover:opacity-70 cursor-pointer"
+          style={{ border: "1px solid var(--border-strong)", color: "var(--text-primary)" }}
+        >
+          수정
         </button>
         <button
           onClick={() => onComplete(goal.id)}
@@ -133,7 +143,9 @@ export default function GoalsPage() {
   const [showDone, setShowDone] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ title: "", targetMinutes: 60, startDate: "", endDate: "" });
+  const [form, setForm] = useState<GoalForm>(() => defaultGoalForm());
+  // 수정 중인 목표 (null이면 새 목표 추가)
+  const [editing, setEditing] = useState<Goal | null>(null);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -179,39 +191,52 @@ export default function GoalsPage() {
   }
 
   function openModal() {
-    // UTC 날짜로 채우면 오전 9시(KST) 전에 열었을 때 시작일이 어제가 된다
-    const today = kstDateKey();
-    const nextWeek = kstDateKey(Date.now() + 7 * DAY_MS);
-    setForm({ title: "", targetMinutes: 60, startDate: today, endDate: nextWeek });
+    // 기본값은 KST 오늘부터 일주일 — UTC 날짜로 채우면 오전 9시(KST) 전에 열었을 때 시작일이 어제가 된다
+    setEditing(null);
+    setForm(defaultGoalForm());
+    setFormError("");
+    setShowModal(true);
+  }
+
+  function openEdit(goal: Goal) {
+    setEditing(goal);
+    setForm(formFromGoal(goal));
     setFormError("");
     setShowModal(true);
   }
 
   async function handleSubmit() {
-    if (!user) return;
+    if (!user || submitting) return;
     setFormError("");
 
-    if (!form.title.trim()) return setFormError("제목을 입력해주세요.");
-    if (!form.startDate || !form.endDate) return setFormError("기간을 설정해주세요.");
-    if (new Date(form.endDate) <= new Date(form.startDate))
-      return setFormError("종료일은 시작일 이후여야 합니다.");
+    const invalid = validateGoalForm(form);
+    if (invalid) return setFormError(invalid);
+
+    // 수정은 바뀐 필드만 보낸다 (서버 PATCH가 받은 필드만 고친다)
+    const patch = editing ? patchFromForm(editing, form) : null;
+    if (editing && !patch) {
+      setShowModal(false);
+      return;
+    }
 
     setSubmitting(true);
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/goals", {
-        method: "POST",
+      const res = await fetch(editing ? `/api/goals/${editing.id}` : "/api/goals", {
+        method: editing ? "PATCH" : "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(editing ? patch : { ...form, title: form.title.trim() }),
       });
       if (res.ok) {
-        const { goal } = await res.json();
-        setGoals((prev) => [goal, ...prev]);
+        const { goal } = (await res.json()) as { goal: Goal };
+        setGoals((prev) => (editing ? prev.map((g) => (g.id === goal.id ? goal : g)) : [goal, ...prev]));
         setShowModal(false);
       } else {
         const data = await res.json().catch(() => ({}));
-        setFormError(data.error ?? "목표 생성에 실패했습니다.");
+        setFormError(data.error ?? (editing ? "목표를 수정하지 못했습니다." : "목표 생성에 실패했습니다."));
       }
+    } catch {
+      setFormError("네트워크 오류가 발생했습니다. 다시 시도해주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -271,7 +296,7 @@ export default function GoalsPage() {
           </div>
         ) : (
           active.map((g) => (
-            <ActiveGoal key={g.id} goal={g} onComplete={handleComplete} onDelete={handleDelete} />
+            <ActiveGoal key={g.id} goal={g} onComplete={handleComplete} onDelete={handleDelete} onEdit={openEdit} />
           ))
         )}
       </section>
@@ -314,7 +339,7 @@ export default function GoalsPage() {
                   className="num text-xs leading-4 shrink-0 hidden sm:inline"
                   style={{ color: "var(--text-muted)", letterSpacing: 0, width: 96 }}
                 >
-                  {fmtDate(g.endDate)}
+                  {fmtDateKey(goalDateKey(g.endDate))}
                 </span>
                 <span
                   className="text-xs leading-4 font-medium shrink-0 text-right"
@@ -338,8 +363,8 @@ export default function GoalsPage() {
         </section>
       )}
 
-      {/* ── 생성 모달 ── */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="새 목표 추가">
+      {/* ── 추가 · 수정 모달 ── */}
+      <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? "목표 수정" : "새 목표 추가"}>
         <div className="flex flex-col gap-5">
           <Field label="목표 제목">
             <input
@@ -347,7 +372,7 @@ export default function GoalsPage() {
               placeholder="예: 하루 스크린타임 2시간 이하로 줄이기"
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              maxLength={200}
+              maxLength={GOAL_TITLE_MAX}
               className={inputClass}
               style={inputStyle}
             />
@@ -381,11 +406,11 @@ export default function GoalsPage() {
                 onChange={(e) =>
                   setForm((f) => ({
                     ...f,
-                    targetMinutes: Math.max(1, Math.min(10080, parseInt(e.target.value) || 1)),
+                    targetMinutes: Math.max(1, Math.min(GOAL_MINUTES_MAX, parseInt(e.target.value) || 1)),
                   }))
                 }
                 min={1}
-                max={10080}
+                max={GOAL_MINUTES_MAX}
                 className={`${inputClass} num w-24 text-center`}
                 style={{ ...inputStyle, letterSpacing: 0 }}
               />
@@ -419,7 +444,7 @@ export default function GoalsPage() {
           <ErrorNote>{formError}</ErrorNote>
 
           <Pill onClick={handleSubmit} disabled={submitting} variant="accent" className="w-full">
-            {submitting ? "추가 중…" : "목표 추가"}
+            {submitting ? (editing ? "저장 중…" : "추가 중…") : editing ? "변경사항 저장" : "목표 추가"}
           </Pill>
         </div>
       </Modal>
