@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import AppShell from "@/components/app/AppShell";
 import PageHeader, { Pill } from "@/components/app/PageHeader";
@@ -9,6 +10,7 @@ import { ErrorNote } from "@/components/app/Field";
 import PostCard from "@/components/community/PostCard";
 import RankingWidget from "@/components/community/RankingWidget";
 import { createPost, fetchFeed, MAX_POST_LENGTH, type FeedPost } from "@/services/community";
+import { NOTICE_REPORTED, noticeBlocked } from "@/lib/moderation-copy";
 
 const NOTICE_KEY = "offlo_community_notice_dismissed";
 
@@ -32,6 +34,17 @@ export default function CommunityPage() {
   const highlightRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const rankingRef = useRef<HTMLDivElement>(null);
+
+  // 신고 · 차단을 마친 뒤의 안내 — 카드가 사라지므로 화면 아래에 잠깐 띄운다
+  const [notice, setNotice] = useState<string | null>(null);
+  // 차단하면 랭킹에서도 그 사람이 빠지므로 위젯을 다시 읽게 한다
+  const [rankingKey, setRankingKey] = useState(0);
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = window.setTimeout(() => setNotice(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [notice]);
 
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
@@ -102,6 +115,19 @@ export default function CommunityPage() {
 
   function removePost(id: string) {
     setPosts((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  function handleReported(id: string) {
+    removePost(id);
+    setNotice(NOTICE_REPORTED);
+  }
+
+  /** 차단은 이 글만이 아니라 그 사람의 글이 모두 사라진다 — 작성자 id는 서버만 알기 때문에 첫 페이지를 다시 읽어 맞춘다 */
+  function handleBlocked(id: string, name: string, fromPost: boolean) {
+    if (fromPost) removePost(id);
+    setNotice(noticeBlocked(name));
+    setRankingKey((k) => k + 1);
+    void load();
   }
 
   function dismissNotice() {
@@ -228,6 +254,9 @@ export default function CommunityPage() {
                     highlight={post.id === highlightId}
                     onUpdate={(patch) => updatePost(post.id, patch)}
                     onDelete={() => removePost(post.id)}
+                    onReported={() => handleReported(post.id)}
+                    onBlocked={(name, fromPost) => handleBlocked(post.id, name, fromPost)}
+                    onNotice={setNotice}
                   />
                 </div>
               ))}
@@ -248,8 +277,39 @@ export default function CommunityPage() {
 
         {/* ── 우: 랭킹 ── */}
         <div ref={rankingRef} className="w-full lg:w-[330px] shrink-0 lg:sticky lg:top-[30px]">
-          <RankingWidget />
+          <RankingWidget refreshKey={rankingKey} />
         </div>
+      </div>
+
+      {/* 신고 · 차단 안내 — 사라진 카드 자리 대신 화면 아래에 */}
+      <div
+        aria-live="polite"
+        className="fixed z-40 bottom-5 left-4 right-4 lg:left-[calc(14rem+1rem)] flex justify-center pointer-events-none"
+      >
+        <AnimatePresence>
+          {notice && (
+            <motion.div
+              key={notice}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.2 }}
+              className="pointer-events-auto flex items-start gap-3 max-w-[520px] w-full px-[18px] py-3.5 rounded-card"
+              style={{ background: "var(--bg-nav)", border: "1px solid var(--border-strong)", boxShadow: "var(--shadow-card)" }}
+            >
+              <p className="flex-1 min-w-0 text-[13px] leading-[20px] break-keep" style={{ color: "var(--text-primary)" }}>
+                {notice}
+              </p>
+              <button
+                onClick={() => setNotice(null)}
+                className="text-xs shrink-0 leading-[20px] transition-opacity hover:opacity-75 cursor-pointer"
+                style={{ color: "var(--text-muted)" }}
+              >
+                닫기
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </AppShell>
   );

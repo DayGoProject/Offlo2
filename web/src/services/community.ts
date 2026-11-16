@@ -1,4 +1,5 @@
 import { auth } from "@/services/firebase";
+import type { ModerationTarget, ReportReason } from "@/lib/moderation-copy";
 
 /**
  * 커뮤니티 API 클라이언트 (11단계).
@@ -38,6 +39,12 @@ export interface RankingEntry {
   isMe: boolean;
 }
 
+export interface BlockedUser {
+  userId: string;
+  name: string;
+  createdAt: string | null;
+}
+
 export const MAX_POST_LENGTH = 1000;
 export const MAX_COMMENT_LENGTH = 300;
 
@@ -61,6 +68,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error ?? "요청을 처리하지 못했습니다.");
   }
+  // 204(차단 해제)는 본문이 없다
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -117,4 +126,28 @@ export function fetchRanking() {
     myRank: RankingEntry | null;
     minAnalyses: number;
   }>("/api/ranking");
+}
+
+/* ── 신고 · 차단 (Play UGC 정책 · 앱과 같은 API) ─────────────── */
+
+/** 글 · 댓글 신고 — 같은 대상을 다시 신고해도 서버가 한 번만 센다. 신고한 것은 나에게 곧바로 숨겨진다 */
+export function reportContent(targetType: ModerationTarget, targetId: string, reason: ReportReason) {
+  return request<{ ok: true; alreadyReported: boolean; hidden: boolean }>(
+    "/api/reports",
+    json({ targetType, targetId, reason })
+  );
+}
+
+/** 글 · 댓글의 작성자를 차단한다 — 작성자 id는 서버만 알기 때문에 글 · 댓글로 가리킨다 */
+export function blockAuthor(targetType: ModerationTarget, targetId: string) {
+  return request<{ block: BlockedUser }>("/api/blocks", json({ targetType, targetId }));
+}
+
+/** 내가 차단한 사용자 (최근 차단 순) */
+export function fetchBlocks() {
+  return request<{ blocks: BlockedUser[] }>("/api/blocks");
+}
+
+export function unblockUser(userId: string) {
+  return request<void>(`/api/blocks/${encodeURIComponent(userId)}`, { method: "DELETE" });
 }

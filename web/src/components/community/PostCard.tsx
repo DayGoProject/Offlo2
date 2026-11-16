@@ -3,11 +3,15 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { relTime } from "@/lib/format";
+import { NOTICE_REPORTED_COMMENT, type ReportReason } from "@/lib/moderation-copy";
+import ModerationPanel from "@/components/community/ModerationPanel";
 import {
+  blockAuthor,
   fetchComments,
   createComment,
   deleteComment,
   deletePost,
+  reportContent,
   toggleLike,
   MAX_COMMENT_LENGTH,
   type FeedComment,
@@ -35,17 +39,33 @@ function Avatar({ name, size = 32 }: { name: string; size?: number }) {
   );
 }
 
-/* ── 게시글 카드 ───────────────────────────────────────────── */
+const errorText = (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback);
+
+/* ── 게시글 카드 ───────────────────────────────────────────────
+   남의 글 · 댓글에는 "신고 · 차단"이 있다 (Play UGC 정책 · 앱과 같은 API). 누르면 카드 안에 패널이 펼쳐진다.
+   - 글 신고 → 부모가 카드를 치운다 (`onReported`)
+   - 댓글 신고 → 이 카드가 그 댓글을 목록에서 치운다
+   - 작성자 차단 → 부모가 피드 · 랭킹을 다시 읽는다 (`onBlocked` — 작성자 id는 서버만 안다)
+   ────────────────────────────────────────────────────────── */
 
 export default function PostCard({
   post,
   onUpdate,
   onDelete,
+  onReported,
+  onBlocked,
+  onNotice,
   highlight = false,
 }: {
   post: FeedPost;
   onUpdate: (patch: Partial<FeedPost>) => void;
   onDelete: () => void;
+  /** 이 글을 신고했다 — 나에게는 더 보이지 않으므로 부모가 치운다 */
+  onReported: () => void;
+  /** 글 · 댓글 작성자를 차단했다 (`fromPost`면 이 글의 작성자) */
+  onBlocked: (name: string, fromPost: boolean) => void;
+  /** 카드 밖(피드 아래)에 띄울 안내 */
+  onNotice: (text: string) => void;
   highlight?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -56,6 +76,69 @@ export default function PostCard({
   // window.confirm 대신 두 단계 확인 — 브라우저 모달은 다크 팔레트를 따르지 않고
   // 자동화·모바일에서 흐름을 끊는다
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // 신고 · 차단 패널 — 글 것(modPost) 또는 댓글 하나(modComment)만 열린다
+  const [modPost, setModPost] = useState(false);
+  const [modComment, setModComment] = useState<string | null>(null);
+
+  function openPostMod() {
+    setModComment(null);
+    setModPost((v) => !v);
+  }
+
+  function openCommentMod(id: string) {
+    setModPost(false);
+    setModComment((cur) => (cur === id ? null : id));
+  }
+
+  /** 글 신고 — 성공하면 부모가 카드를 치우므로 패널은 에러만 받는다 */
+  async function reportPost(reason: ReportReason): Promise<string | null> {
+    try {
+      await reportContent("post", post.id, reason);
+      onReported();
+      return null;
+    } catch (e) {
+      return errorText(e, "신고하지 못했습니다.");
+    }
+  }
+
+  async function blockPostAuthor(): Promise<string | null> {
+    try {
+      const { block } = await blockAuthor("post", post.id);
+      onBlocked(block.name || post.authorName, true);
+      return null;
+    } catch (e) {
+      return errorText(e, "차단하지 못했습니다.");
+    }
+  }
+
+  /** 댓글 신고 — 성공하면 그 댓글을 목록에서 치운다 */
+  async function reportComment(comment: FeedComment, reason: ReportReason): Promise<string | null> {
+    try {
+      await reportContent("comment", comment.id, reason);
+      setComments((prev) => (prev ?? []).filter((c) => c.id !== comment.id));
+      setModComment(null);
+      onNotice(NOTICE_REPORTED_COMMENT);
+      return null;
+    } catch (e) {
+      return errorText(e, "신고하지 못했습니다.");
+    }
+  }
+
+  /** 댓글 작성자 차단 — 그 사람의 다른 댓글도 빠지도록 댓글을 다시 읽는다 */
+  async function blockCommentAuthor(comment: FeedComment): Promise<string | null> {
+    try {
+      const { block } = await blockAuthor("comment", comment.id);
+      setModComment(null);
+      setComments((prev) => (prev ?? []).filter((c) => c.id !== comment.id));
+      fetchComments(post.id)
+        .then((res) => setComments(res.comments))
+        .catch(() => {});
+      onBlocked(block.name || comment.authorName, false);
+      return null;
+    } catch (e) {
+      return errorText(e, "차단하지 못했습니다.");
+    }
+  }
 
   async function handleLike() {
     // 낙관적 업데이트 후 서버 응답으로 실제 값을 덮어쓴다
@@ -234,7 +317,29 @@ export default function PostCard({
             {post.commentCount}
           </span>
         </button>
+
+        {!post.isMine && (
+          <button
+            onClick={openPostMod}
+            aria-expanded={modPost}
+            aria-label="이 글 신고하기 또는 작성자 차단하기"
+            className="ml-auto flex items-center min-h-8 text-[11px] transition-opacity hover:opacity-75 cursor-pointer"
+            style={{ color: modPost ? "var(--text-primary)" : "var(--text-faint)" }}
+          >
+            신고 · 차단
+          </button>
+        )}
       </div>
+
+      {modPost && (
+        <ModerationPanel
+          subject="글"
+          authorName={post.authorName}
+          onReport={reportPost}
+          onBlock={blockPostAuthor}
+          onClose={() => setModPost(false)}
+        />
+      )}
 
       {/* 댓글 */}
       <AnimatePresence initial={false}>
@@ -267,13 +372,23 @@ export default function PostCard({
                         <span className="text-[11px]" style={{ color: "var(--text-ghost)" }}>
                           {relTime(c.createdAt)}
                         </span>
-                        {c.isMine && (
+                        {c.isMine ? (
                           <button
                             onClick={() => handleDeleteComment(c.id)}
                             className="text-[11px] ml-auto shrink-0 transition-opacity hover:opacity-80 cursor-pointer"
                             style={{ color: "var(--text-ghost)" }}
                           >
                             삭제
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => openCommentMod(c.id)}
+                            aria-expanded={modComment === c.id}
+                            aria-label="이 댓글 신고하기 또는 작성자 차단하기"
+                            className="text-[11px] ml-auto shrink-0 transition-opacity hover:opacity-80 cursor-pointer"
+                            style={{ color: modComment === c.id ? "var(--text-primary)" : "var(--text-ghost)" }}
+                          >
+                            신고 · 차단
                           </button>
                         )}
                       </div>
@@ -283,6 +398,17 @@ export default function PostCard({
                       >
                         {c.content}
                       </p>
+                      {modComment === c.id && (
+                        <div className="pt-1.5">
+                          <ModerationPanel
+                            subject="댓글"
+                            authorName={c.authorName}
+                            onReport={(reason) => reportComment(c, reason)}
+                            onBlock={() => blockCommentAuthor(c)}
+                            onClose={() => setModComment(null)}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))

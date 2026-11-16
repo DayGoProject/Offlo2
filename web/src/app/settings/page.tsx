@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updateProfile } from "firebase/auth";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +8,8 @@ import { logout } from "@/services/auth";
 import AppShell from "@/components/app/AppShell";
 import PageHeader, { Pill } from "@/components/app/PageHeader";
 import Field, { ErrorNote, inputStyle } from "@/components/app/Field";
+import BlockedUsersList from "@/components/community/BlockedUsersList";
+import { fetchBlocks, unblockUser, type BlockedUser } from "@/services/community";
 
 /* 회원 탈퇴 확인 문구 — 화면 안내와 검증이 같은 상수를 봐야 어긋나지 않는다 */
 const DELETE_PHRASE = "탈퇴";
@@ -59,9 +61,36 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
+  /* 차단한 사용자 (커뮤니티 신고 · 차단) */
+  const [blocks, setBlocks] = useState<BlockedUser[] | null>(null);
+  const [blocksError, setBlocksError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && !user) router.replace("/login");
   }, [user, authLoading, router]);
+
+  const loadBlocks = useCallback(async () => {
+    setBlocksError(null);
+    try {
+      setBlocks((await fetchBlocks()).blocks);
+    } catch (e) {
+      setBlocksError(e instanceof Error ? e.message : "차단 목록을 불러오지 못했습니다.");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) void loadBlocks();
+  }, [user, loadBlocks]);
+
+  async function handleUnblock(target: BlockedUser): Promise<string | null> {
+    try {
+      await unblockUser(target.userId);
+      setBlocks((prev) => (prev ?? []).filter((b) => b.userId !== target.userId));
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : "차단을 풀지 못했습니다.";
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -193,6 +222,10 @@ export default function SettingsPage() {
             <p className="text-[13px] leading-[21px]" style={{ color: "var(--text-muted)" }}>
               Offlo는 Google 계정으로만 로그인해요. 비밀번호는 Offlo가 받지 않으니 로그인 보안은 Google 계정 설정에서 관리하세요.
             </p>
+          </Panel>
+
+          <Panel title={blocks && blocks.length > 0 ? `차단한 사용자 ${blocks.length}명` : "차단한 사용자"}>
+            <BlockedUsersList items={blocks} error={blocksError} onRetry={() => void loadBlocks()} onUnblock={handleUnblock} />
           </Panel>
         </div>
 

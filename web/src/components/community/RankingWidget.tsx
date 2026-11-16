@@ -61,7 +61,8 @@ function Row({ entry }: { entry: RankingEntry }) {
   );
 }
 
-export default function RankingWidget() {
+/** `refreshKey`가 바뀌면 다시 읽는다 — 사용자를 차단하면 그 사람의 줄이 빠진다 */
+export default function RankingWidget({ refreshKey = 0 }: { refreshKey?: number }) {
   const [data, setData] = useState<{
     ranking: RankingEntry[];
     myRank: RankingEntry | null;
@@ -70,10 +71,20 @@ export default function RankingWidget() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     fetchRanking()
-      .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : "랭킹을 불러오지 못했습니다."));
-  }, []);
+      .then((res) => {
+        if (cancelled) return;
+        setData(res);
+        setError("");
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "랭킹을 불러오지 못했습니다.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey]);
 
   // Top 10 안에 이미 내가 있으면 하단에 중복 표시하지 않는다
   const showMyRankSeparately = data?.myRank != null && !data.ranking.some((r) => r.isMe);
